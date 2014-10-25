@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{CAB096CD-070D-45DB-8340-8B4EFB073BB9}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>SwiftBinaryProtocol</RootNamespace>
+    <AssemblyName>SwiftBinaryProtocol</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CRC16CCITT.cs" />
+    <Compile Include="Eventarguments\SBPMessageEventArgs.cs" />
+    <Compile Include="Eventarguments\SBPRawMessageEventArgs.cs" />
+    <Compile Include="Eventarguments\SBPReadExceptionEventArgs.cs" />
+    <Compile Include="Eventarguments\SBPSendExceptionEventArgs.cs" />
+    <Compile Include="MessageStructs\BaselineECEF.cs" />
+    <Compile Include="MessageStructs\BaselineNED.cs" />
+    <Compile Include="MessageStructs\DilutionOfPrecision.cs" />
+    <Compile Include="MessageStructs\GPSTime.cs" />
+    <Compile Include="MessageStructs\Heartbeat.cs" />
+    <Compile Include="MessageStructs\IARState.cs" />
+    <Compile Include="MessageStructs\IPayload.cs" />
+    <Compile Include="MessageStructs\Observation.cs" />
+    <Compile Include="MessageStructs\ObservationHeader.cs" />
+    <Compile Include="MessageStructs\PosistionECEF.cs" />
+    <Compile Include="MessageStructs\PositionLLH.cs" />
+    <Compile Include="MessageStructs\Print.cs" />
+    <Compile Include="MessageStructs\VelocityECEF.cs" />
+    <Compile Include="MessageStructs\VelocityNED.cs" />
+    <Compile Include="SBPRawReceiverSender.cs" />
+    <Compile Include="SBPReceiverSender.cs" />
+    <Compile Include="SBP_Enums.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Utilities\Utilities\Utilities.csproj">
+      <Project>{7b42a768-a977-4e3f-936a-4f3b72ecb6e1}</Project>
+      <Name>Utilities</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="LICENSE.txt" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
