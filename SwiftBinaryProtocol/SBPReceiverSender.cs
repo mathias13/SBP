@@ -16,7 +16,7 @@ namespace SwiftBinaryProtocol
 
         public byte? Length;
 
-        public byte[] Payload;
+        public List<byte> Payload;
 
         public ushort? ReceicevedChecksum;
 
@@ -37,7 +37,7 @@ namespace SwiftBinaryProtocol
 
         public SBPReceiveMessage()
         {
-            Payload = new byte[0];
+            Payload = new List<byte>();
         }
     }
     
@@ -120,6 +120,8 @@ namespace SwiftBinaryProtocol
 
         public const byte PREAMBLE = 0x55;
 
+        public const int MAX_BYTE_BLOCK_SIZE = 4096;
+
         #endregion
 
         #region Events
@@ -155,6 +157,8 @@ namespace SwiftBinaryProtocol
             Thread.Sleep(1000);
             bool preambleFound = false;
             SBPReceiveMessage message = new SBPReceiveMessage();
+            Queue<byte> receivedBytes = new Queue<byte>();
+            IAsyncResult readResult = null;
             while(!_receiveSendThreadStopped)
             {
                 try
@@ -162,9 +166,6 @@ namespace SwiftBinaryProtocol
 
                     using(SerialPort serialPort = new SerialPort(_comPort, _baudRate, Parity.None, 8, StopBits.One))
                     {
-                        serialPort.DtrEnable = true;
-                        serialPort.RtsEnable = true;
-                        serialPort.Handshake = Handshake.RequestToSend;
                         serialPort.Open();
                         preambleFound = false;
                         while(!_receiveSendThreadStopped)
@@ -177,7 +178,7 @@ namespace SwiftBinaryProtocol
 
                                 try
                                 {
-                                    serialPort.Write(messageToSend, 0, messageToSend.Length);
+                                    serialPort.BaseStream.Write(messageToSend, 0, messageToSend.Length);
                                 }
                                 catch (Exception e)
                                 {
@@ -190,34 +191,45 @@ namespace SwiftBinaryProtocol
                                 }
                             }
 
-                            int neededBytes = 2;
-                            while (serialPort.BytesToRead >= neededBytes)
+                            byte[] buffer = new byte[MAX_BYTE_BLOCK_SIZE];
+                            if (readResult == null)
+                                readResult = serialPort.BaseStream.BeginRead(buffer, 0, buffer.Length, null, null);
+                            else
+                            {
+                                if (readResult.IsCompleted)
+                                {
+                                    int bytesRead = serialPort.BaseStream.EndRead(readResult);
+                                    byte[] bytes = new byte[bytesRead];
+                                    Buffer.BlockCopy(buffer, 0, bytes, 0, bytesRead);
+                                    for (int i = 0; i < bytesRead; i++)
+                                        receivedBytes.Enqueue(bytes[i]);
+
+                                    readResult = null;
+                                }
+                            }
+
+                            //We need at least two bytes to read fields properly
+                            while (receivedBytes.Count > 1)
                             {
                                 if(preambleFound)
                                 {
                                     if (!message.MessageType.HasValue)
                                     {
-                                        byte[] messageTypeBytes = new byte[2] { (byte)serialPort.ReadByte(), (byte)serialPort.ReadByte() };
+                                        byte[] messageTypeBytes = new byte[2] { receivedBytes.Dequeue(), receivedBytes.Dequeue() };
                                         message.MessageType = BitConverter.ToUInt16(messageTypeBytes, 0);
                                     }
                                     else if (!message.SenderID.HasValue)
                                     {
-                                        byte[] senderBytes = new byte[2] { (byte)serialPort.ReadByte(), (byte)serialPort.ReadByte() };
+                                        byte[] senderBytes = new byte[2] { receivedBytes.Dequeue(), receivedBytes.Dequeue() };
                                         message.SenderID = BitConverter.ToUInt16(senderBytes, 0);
                                     }
                                     else if (!message.Length.HasValue)
+                                        message.Length = receivedBytes.Dequeue();
+                                    else if (message.Payload.Count < message.Length.Value)
+                                        message.Payload.Add(receivedBytes.Dequeue());
+                                    else
                                     {
-                                        message.Length = (byte)serialPort.ReadByte();
-                                        neededBytes = (int)message.Length.Value;
-                                    }
-                                    else if (serialPort.BytesToRead >= (int)message.Length.Value)
-                                    {
-                                        message.Payload = new byte[(int)message.Length.Value];
-                                        serialPort.Read(message.Payload, 0, (int)message.Length.Value);
-                                    }
-                                    else if (message.Payload.Length == (int)message.Length.Value)
-                                    {
-                                        byte[] crcBytes = new byte[2] { (byte)serialPort.ReadByte(), (byte)serialPort.ReadByte() };
+                                        byte[] crcBytes = new byte[2] { receivedBytes.Dequeue(), receivedBytes.Dequeue() };
                                         message.ReceicevedChecksum = BitConverter.ToUInt16(crcBytes, 0);
                                         if (message.ValidateCheckSum())
                                         {
@@ -229,55 +241,55 @@ namespace SwiftBinaryProtocol
                                             switch (messageTypeEnum)
                                             {
                                                 case SBP_Enums.MessageTypes.BASELINE_ECEF:
-                                                    messageData = new BaselineECEF(message.Payload);
+                                                    messageData = new BaselineECEF(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.BASELINE_NED:
-                                                    messageData = new BaselineNED(message.Payload);
+                                                    messageData = new BaselineNED(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.DOPS:
-                                                    messageData = new DilutionOfPrecision(message.Payload);
+                                                    messageData = new DilutionOfPrecision(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.GPSTIME:
-                                                    messageData = new GPSTime(message.Payload);
+                                                    messageData = new GPSTime(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.HEARTBEAT:
-                                                    messageData = new Heartbeat(message.Payload);
+                                                    messageData = new Heartbeat(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.POS_ECEF:
-                                                    messageData = new PosistionECEF(message.Payload);
+                                                    messageData = new PosistionECEF(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.POS_LLH:
-                                                    messageData = new PositionLLH(message.Payload);
+                                                    messageData = new PositionLLH(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.VEL_ECEF:
-                                                    messageData = new VelocityECEF(message.Payload);
+                                                    messageData = new VelocityECEF(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.VEL_NED:
-                                                    messageData = new VelocityNED(message.Payload);
+                                                    messageData = new VelocityNED(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.OBS:
-                                                    messageData = new Observation(message.Payload);
+                                                    messageData = new Observation(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.OBS_HDR:
-                                                    messageData = new ObservationHeader(message.Payload);
+                                                    messageData = new ObservationHeader(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.IAR_STATE:
-                                                    messageData = new IARState(message.Payload);
+                                                    messageData = new IARState(message.Payload.ToArray());
                                                     break;
 
                                                 case SBP_Enums.MessageTypes.PRINT:
-                                                    messageData = new Print(message.Payload);
+                                                    messageData = new Print(message.Payload.ToArray());
                                                     break;
                                             }
 
@@ -314,7 +326,8 @@ namespace SwiftBinaryProtocol
                 {
                     preambleFound = false;
                     message = new SBPReceiveMessage();
-                    Utilities.Log.Log.Error(e);
+                    receivedBytes.Clear();
+                    readResult = null;
                     lock (_syncobject)
                         _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(e));
                 }
