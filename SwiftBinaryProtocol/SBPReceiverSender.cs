@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.IO;
-using System.IO.Ports;
+﻿using SwiftBinaryProtocol.Eventarguments;
 using SwiftBinaryProtocol.MessageStructs;
-using SwiftBinaryProtocol.Eventarguments;
+using System;
+using System.Collections.Generic;
+using System.IO.Ports;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace SwiftBinaryProtocol
 {
@@ -118,6 +118,10 @@ namespace SwiftBinaryProtocol
 
         protected int _baudRate = 19200;
 
+        protected Queue<byte> _receivedBytes;
+
+        protected byte[] _buffer = new byte[MAX_BYTE_BLOCK_SIZE];
+
         public const byte PREAMBLE = 0x55;
 
         public const int MAX_BYTE_BLOCK_SIZE = 4096;
@@ -157,8 +161,7 @@ namespace SwiftBinaryProtocol
             Thread.Sleep(1000);
             bool preambleFound = false;
             SBPReceiveMessage message = new SBPReceiveMessage();
-            Queue<byte> receivedBytes = new Queue<byte>();
-            IAsyncResult readResult = null;
+            _receivedBytes = new Queue<byte>();
             while(!_receiveSendThreadStopped)
             {
                 try
@@ -166,6 +169,9 @@ namespace SwiftBinaryProtocol
 
                     using(SerialPort serialPort = new SerialPort(_comPort, _baudRate, Parity.None, 8, StopBits.One))
                     {
+                        serialPort.DtrEnable = true;
+                        serialPort.RtsEnable = true;
+                        serialPort.Handshake = Handshake.RequestToSend;
                         serialPort.Open();
                         preambleFound = false;
                         while(!_receiveSendThreadStopped)
@@ -179,6 +185,7 @@ namespace SwiftBinaryProtocol
                                 try
                                 {
                                     serialPort.BaseStream.Write(messageToSend, 0, messageToSend.Length);
+                                    serialPort.BaseStream.Flush();
                                 }
                                 catch (Exception e)
                                 {
@@ -191,133 +198,116 @@ namespace SwiftBinaryProtocol
                                 }
                             }
 
-                            byte[] buffer = new byte[MAX_BYTE_BLOCK_SIZE];
-                            if (readResult == null)
-                                readResult = serialPort.BaseStream.BeginRead(buffer, 0, buffer.Length, null, null);
-                            else
-                            {
-                                if (readResult.IsCompleted)
-                                {
-                                    int bytesRead = serialPort.BaseStream.EndRead(readResult);
-                                    byte[] bytes = new byte[bytesRead];
-                                    Buffer.BlockCopy(buffer, 0, bytes, 0, bytesRead);
-                                    for (int i = 0; i < bytesRead; i++)
-                                        receivedBytes.Enqueue(bytes[i]);
+                            StartReading(serialPort);
 
-                                    readResult = null;
-                                }
-                            }
-
-                            //We need at least two bytes to read fields properly
-                            while (receivedBytes.Count > 1)
+                            lock (_syncobject)
                             {
-                                if(preambleFound)
+                                //We need at least two bytes to read fields properly
+                                while (_receivedBytes.Count > 1)
                                 {
-                                    if (!message.MessageType.HasValue)
+                                    if (preambleFound)
                                     {
-                                        byte[] messageTypeBytes = new byte[2] { receivedBytes.Dequeue(), receivedBytes.Dequeue() };
-                                        message.MessageType = BitConverter.ToUInt16(messageTypeBytes, 0);
-                                    }
-                                    else if (!message.SenderID.HasValue)
-                                    {
-                                        byte[] senderBytes = new byte[2] { receivedBytes.Dequeue(), receivedBytes.Dequeue() };
-                                        message.SenderID = BitConverter.ToUInt16(senderBytes, 0);
-                                    }
-                                    else if (!message.Length.HasValue)
-                                        message.Length = receivedBytes.Dequeue();
-                                    else if (message.Payload.Count < message.Length.Value)
-                                        message.Payload.Add(receivedBytes.Dequeue());
-                                    else
-                                    {
-                                        byte[] crcBytes = new byte[2] { receivedBytes.Dequeue(), receivedBytes.Dequeue() };
-                                        message.ReceicevedChecksum = BitConverter.ToUInt16(crcBytes, 0);
-                                        if (message.ValidateCheckSum())
+                                        if (!message.MessageType.HasValue)
                                         {
-                                            SBP_Enums.MessageTypes messageTypeEnum = SBP_Enums.MessageTypes.Unknown;
-                                            if (Enum.IsDefined(typeof(SBP_Enums.MessageTypes), (int)message.MessageType))
-                                                messageTypeEnum = (SBP_Enums.MessageTypes)(int)message.MessageType;
-
-                                            object messageData = new object();
-                                            switch (messageTypeEnum)
-                                            {
-                                                case SBP_Enums.MessageTypes.BASELINE_ECEF:
-                                                    messageData = new BaselineECEF(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.BASELINE_NED:
-                                                    messageData = new BaselineNED(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.DOPS:
-                                                    messageData = new DilutionOfPrecision(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.GPSTIME:
-                                                    messageData = new GPSTime(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.HEARTBEAT:
-                                                    messageData = new Heartbeat(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.POS_ECEF:
-                                                    messageData = new PosistionECEF(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.POS_LLH:
-                                                    messageData = new PositionLLH(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.VEL_ECEF:
-                                                    messageData = new VelocityECEF(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.VEL_NED:
-                                                    messageData = new VelocityNED(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.OBS:
-                                                    messageData = new Observation(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.OBS_HDR:
-                                                    messageData = new ObservationHeader(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.IAR_STATE:
-                                                    messageData = new IARState(message.Payload.ToArray());
-                                                    break;
-
-                                                case SBP_Enums.MessageTypes.PRINT:
-                                                    messageData = new Print(message.Payload.ToArray());
-                                                    break;
-                                            }
-
-                                            lock (_syncobject)
-                                                _messageQueue.Enqueue(new SBPMessageEventArgs((int)message.SenderID.Value, messageTypeEnum, messageData));
+                                            byte[] messageTypeBytes = new byte[2] { _receivedBytes.Dequeue(), _receivedBytes.Dequeue() };
+                                            message.MessageType = BitConverter.ToUInt16(messageTypeBytes, 0);
                                         }
+                                        else if (!message.SenderID.HasValue)
+                                        {
+                                            byte[] senderBytes = new byte[2] { _receivedBytes.Dequeue(), _receivedBytes.Dequeue() };
+                                            message.SenderID = BitConverter.ToUInt16(senderBytes, 0);
+                                        }
+                                        else if (!message.Length.HasValue)
+                                            message.Length = _receivedBytes.Dequeue();
+                                        else if (message.Payload.Count < message.Length.Value)
+                                            message.Payload.Add(_receivedBytes.Dequeue());
                                         else
                                         {
-                                            lock (_syncobject)
-                                                _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("CRC not valid")));
+                                            byte[] crcBytes = new byte[2] { _receivedBytes.Dequeue(), _receivedBytes.Dequeue() };
+                                            message.ReceicevedChecksum = BitConverter.ToUInt16(crcBytes, 0);
+                                            if (message.ValidateCheckSum())
+                                            {
+                                                SBP_Enums.MessageTypes messageTypeEnum = SBP_Enums.MessageTypes.Unknown;
+                                                if (Enum.IsDefined(typeof(SBP_Enums.MessageTypes), (int)message.MessageType))
+                                                    messageTypeEnum = (SBP_Enums.MessageTypes)(int)message.MessageType;
+
+                                                object messageData = new object();
+                                                switch (messageTypeEnum)
+                                                {
+                                                    case SBP_Enums.MessageTypes.BASELINE_ECEF:
+                                                        messageData = new BaselineECEF(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.BASELINE_NED:
+                                                        messageData = new BaselineNED(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.DOPS:
+                                                        messageData = new DilutionOfPrecision(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.GPSTIME:
+                                                        messageData = new GPSTime(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.HEARTBEAT:
+                                                        messageData = new Heartbeat(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.POS_ECEF:
+                                                        messageData = new PosistionECEF(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.POS_LLH:
+                                                        messageData = new PositionLLH(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.VEL_ECEF:
+                                                        messageData = new VelocityECEF(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.VEL_NED:
+                                                        messageData = new VelocityNED(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.OBS:
+                                                        messageData = new Observation(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.OBS_HDR:
+                                                        messageData = new ObservationHeader(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.IAR_STATE:
+                                                        messageData = new IARState(message.Payload.ToArray());
+                                                        break;
+
+                                                    case SBP_Enums.MessageTypes.PRINT:
+                                                        messageData = new Print(message.Payload.ToArray());
+                                                        break;
+                                                }
+
+                                                lock (_syncobject)
+                                                    _messageQueue.Enqueue(new SBPMessageEventArgs((int)message.SenderID.Value, messageTypeEnum, messageData));
+                                            }
+                                            else
+                                            {
+                                                lock (_syncobject)
+                                                    _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("CRC not valid")));
+                                            }
+
+                                            message = new SBPReceiveMessage();
+                                            preambleFound = false;
+                                            break;
                                         }
-
-                                        message = new SBPReceiveMessage();
-                                        preambleFound = false;
-                                        break;
                                     }
+                                    else
+                                        if (_receivedBytes.Dequeue() == PREAMBLE)
+                                            preambleFound = true;
+
                                 }
-                                else
-                                    if ((byte)serialPort.ReadByte() == PREAMBLE)
-                                        preambleFound = true;
-
                             }
-
-                            if (serialPort.BytesToRead > 3000)
-                                Thread.Sleep(0);
-
-                            if (serialPort.BytesToRead < 10)
-                                Thread.Sleep(1);
+                            Thread.Sleep(1);
                         }
 
                     }
@@ -326,12 +316,36 @@ namespace SwiftBinaryProtocol
                 {
                     preambleFound = false;
                     message = new SBPReceiveMessage();
-                    receivedBytes.Clear();
-                    readResult = null;
+                    _receivedBytes.Clear();
+
                     lock (_syncobject)
                         _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(e));
                 }
             }
+        }
+        
+        protected void StartReading(SerialPort port)
+        {
+            port.BaseStream.BeginRead(_buffer, 0, _buffer.Length, new AsyncCallback(ReadComplete), port);
+        }
+
+        protected void ReadComplete(IAsyncResult ar)
+        {
+            SerialPort port = ar.AsyncState as SerialPort;
+            if(port == null)
+                return;
+            if(!port.IsOpen)
+                return;
+
+            byte[] bytesRead = new byte[port.BaseStream.EndRead(ar)];
+            Buffer.BlockCopy(_buffer, 0, bytesRead, 0, bytesRead.Length);
+
+            Thread.Sleep(1);
+            StartReading(port);
+
+            lock(_syncobject)
+                foreach (byte byteRead in bytesRead)
+                    _receivedBytes.Enqueue(byteRead);
         }
 
         protected virtual void InvokeThread()
