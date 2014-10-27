@@ -122,7 +122,7 @@ namespace SwiftBinaryProtocol
 
         protected override void InvokeThread()
         {
-            while (!_invokeThreadStopped)
+            while (!_invokeThreadStop)
             {
                 bool somethingToDo = false;
                 SBPSendExceptionEventArgs sendException = null;

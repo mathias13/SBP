@@ -104,7 +104,7 @@ namespace SwiftBinaryProtocol
 
         private Queue<byte[]> _sendMessageQueue = new Queue<byte[]>();
 
-        protected bool _invokeThreadStopped = false;
+        protected bool _invokeThreadStop = false;
 
         protected Thread _invokeThread;
 
@@ -120,7 +120,7 @@ namespace SwiftBinaryProtocol
 
         protected Queue<byte> _receivedBytes;
 
-        protected byte[] _buffer = new byte[MAX_BYTE_BLOCK_SIZE];
+        protected byte[] _buffer;
 
         public const byte PREAMBLE = 0x55;
 
@@ -173,6 +173,7 @@ namespace SwiftBinaryProtocol
                         serialPort.RtsEnable = true;
                         serialPort.Handshake = Handshake.RequestToSend;
                         serialPort.Open();
+                        StartReading(serialPort);
                         preambleFound = false;
                         while(!_receiveSendThreadStopped)
                         {
@@ -197,9 +198,7 @@ namespace SwiftBinaryProtocol
                                     }
                                 }
                             }
-
-                            StartReading(serialPort);
-
+                            
                             lock (_syncobject)
                             {
                                 //We need at least two bytes to read fields properly
@@ -326,6 +325,7 @@ namespace SwiftBinaryProtocol
         
         protected void StartReading(SerialPort port)
         {
+            _buffer = new byte[MAX_BYTE_BLOCK_SIZE];
             port.BaseStream.BeginRead(_buffer, 0, _buffer.Length, new AsyncCallback(ReadComplete), port);
         }
 
@@ -340,9 +340,9 @@ namespace SwiftBinaryProtocol
             byte[] bytesRead = new byte[port.BaseStream.EndRead(ar)];
             Buffer.BlockCopy(_buffer, 0, bytesRead, 0, bytesRead.Length);
 
-            Thread.Sleep(1);
             StartReading(port);
 
+            Thread.Sleep(1);
             lock(_syncobject)
                 foreach (byte byteRead in bytesRead)
                     _receivedBytes.Enqueue(byteRead);
@@ -350,7 +350,7 @@ namespace SwiftBinaryProtocol
 
         protected virtual void InvokeThread()
         {
-            while(!_invokeThreadStopped)
+            while(!_invokeThreadStop)
             {
                 bool somethingToDo = false;
                 SBPSendExceptionEventArgs sendException = null;
@@ -417,7 +417,7 @@ namespace SwiftBinaryProtocol
         public void Dispose()
         {
             _receiveSendThreadStopped = true;
-            _invokeThreadStopped = true;
+            _invokeThreadStop = true;
             _receiveSendThread.Join();
             _invokeThread.Join();
         }
