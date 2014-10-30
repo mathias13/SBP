@@ -2,18 +2,20 @@
 using SwiftBinaryProtocol.MessageStructs;
 using System;
 using System.Collections.Generic;
-using System.IO.Ports;
+using PInvokeSerialPort;
 using System.Threading;
 
 namespace SwiftBinaryProtocol
 {
-    public class SBPRawReceiverSender : SBPReceiverSender
+    public class SBPRawReceiverSender : SBPReceiverSenderBase
     {
         #region Private Variable
 
-        private Queue<byte[]> _sendMessageQueue = new Queue<byte[]>();
-
         private Queue<byte[]> _messageQueue = new Queue<byte[]>();
+
+        private bool _preambleFound = false;
+
+        private List<byte> _messageBytes = new List<byte>();
 
         #endregion
 
@@ -33,142 +35,78 @@ namespace SwiftBinaryProtocol
 
         #region Protected Methods
 
-        protected override void ReceiveSendThread()
+        protected override void ProcessReading(bool restart)
         {
-            Thread.Sleep(1000);
-            bool preamableFound = false;
-            List<byte> messageBytes = new List<byte>();
-            while (!_receiveSendThreadStopped)
+            if(restart)
             {
-                try
+                _preambleFound = false;
+                _messageBytes.Clear();
+            }
+
+            //We need at least two bytes every time to interpret fields without problem
+            while (_receivedBytes.Count > 0)
+            {
+                if (_preambleFound)
                 {
+                    if (_messageBytes.Count == 0)
+                        _messageBytes.Add(PREAMBLE);
 
-                    using (SerialPort serialPort = new SerialPort(_comPort, _baudRate, Parity.None, 8, StopBits.One))
+                    while (_messageBytes.Count < 6 && _receivedBytes.Count > 0)
+                        _messageBytes.Add(_receivedBytes.Dequeue());
+
+                    while (_messageBytes.Count < ((int)_messageBytes[5] + 8) && _messageBytes.Count >= 6 && _receivedBytes.Count > 0)
+                        _messageBytes.Add(_receivedBytes.Dequeue());
+
+                    if (_messageBytes.Count == ((int)_messageBytes[5] + 8))
                     {
-                        serialPort.ReadBufferSize = 65536;
-                        serialPort.Open();
-                        preamableFound = false;
-                        while (!_receiveSendThreadStopped)
+                        List<byte> crcBytes = new List<byte>();
+                        for (int i = 1; i < _messageBytes.Count - 2; i++)
+                            crcBytes.Add(_messageBytes[i]);
+
+                        ushort crc = Crc16CcittKermit.ComputeChecksum(crcBytes.ToArray());
+                        byte[] crcSumBytes = new byte[2] { _messageBytes[_messageBytes.Count - 2], _messageBytes[_messageBytes.Count - 1] };
+                        ushort crcInMessage = BitConverter.ToUInt16(crcSumBytes, 0);
+                        if (crc == crcInMessage)
+                            _messageQueue.Enqueue(_messageBytes.ToArray());
+                        else
                         {
-                            if (_sendMessageQueue.Count > 0)
-                            {
-                                byte[] messageToSend;
-                                lock (_syncobject)
-                                    messageToSend = _sendMessageQueue.Dequeue();
-                                
-                                try
-                                {
-                                    serialPort.Write(messageToSend, 0, messageToSend.Length);
-                                }
-                                catch (Exception e)
-                                {
-                                    lock (_syncobject)
-                                        _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(e));
-                                }
-                            }
-
-                            //We need at least two bytes every time to interpret fields without problem
-                            while (serialPort.BytesToRead > 0)
-                            {
-                                if (preamableFound)
-                                {
-                                    if (messageBytes.Count == 0)
-                                        messageBytes.Add(PREAMBLE);
-
-                                    while (messageBytes.Count < 6 && serialPort.BytesToRead > 0)
-                                        messageBytes.Add((byte)serialPort.ReadByte());
-                                   
-                                    while (messageBytes.Count < ((int)messageBytes[5] + 8) && messageBytes.Count >= 6 && serialPort.BytesToRead > 0)
-                                        messageBytes.Add((byte)serialPort.ReadByte());
-
-                                    if (messageBytes.Count == ((int)messageBytes[5] + 8))
-                                    {
-                                        List<byte> crcBytes = new List<byte>();
-                                        for (int i = 1; i < messageBytes.Count - 2; i++)
-                                            crcBytes.Add(messageBytes[i]);
-
-                                        ushort crc = Crc16CcittKermit.ComputeChecksum(crcBytes.ToArray());
-                                        byte[] crcSumBytes = new byte[2] { messageBytes[messageBytes.Count - 2], messageBytes[messageBytes.Count - 1] };
-                                        ushort crcInMessage = BitConverter.ToUInt16(crcSumBytes, 0);
-                                        if (crc == crcInMessage)
-                                            _messageQueue.Enqueue(messageBytes.ToArray());
-                                        else
-                                        {
-                                            lock (_syncobject)
-                                                _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("CRC not valid")));
-                                        }
-                                        messageBytes.Clear();
-                                        preamableFound = false;
-                                    }
-                                }
-                                else
-                                    if ((byte)serialPort.ReadByte() == PREAMBLE)
-                                        preamableFound = true;
-                            }
-
-                            if (serialPort.BytesToRead < 512)
-                                Thread.Sleep(2);
+                            lock (_syncobject)
+                                _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("CRC not valid")));
                         }
-
+                        _messageBytes.Clear();
+                        _preambleFound = false;
                     }
                 }
-                catch (Exception e)
-                {
-                    lock (_syncobject)
-                        _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(e));
-                }
+                else
+                    if (_receivedBytes.Dequeue() == PREAMBLE)
+                        _preambleFound = true;
             }
         }
 
-        protected override void InvokeThread()
+        protected override bool InvokeThreadExecute()
         {
-            while (!_invokeThreadStop)
+            SBPRawMessageEventArgs sendMessage = null;
+            lock (_syncobject)
             {
-                bool somethingToDo = false;
-                SBPSendExceptionEventArgs sendException = null;
-                SBPReadExceptionEventArgs readException = null;
-                SBPRawMessageEventArgs message = null;
-                lock (_syncobject)
+                if (_messageQueue.Count > 0)
                 {
-                    if (_sendExceptionQueue.Count > 0)
-                    {
-                        sendException = _sendExceptionQueue.Dequeue();
-                        somethingToDo = true;
-                    }
+                    byte[] message = _messageQueue.Dequeue();
+                    int messageType = BitConverter.ToUInt16(new byte[]{message[1], message[2]},0);
+                    SBP_Enums.MessageTypes messageTypeEnum = SBP_Enums.MessageTypes.Unknown;
+                    if (Enum.IsDefined(typeof(SBP_Enums.MessageTypes), (int)messageType))
+                        messageTypeEnum = (SBP_Enums.MessageTypes)(int)messageType;
 
-                    if (_readExceptionQueue.Count > 0)
-                    {
-                        readException = _readExceptionQueue.Dequeue();
-                        somethingToDo = true;
-                    }
-
-                    if (_messageQueue.Count > 0)
-                    {
-                        byte[] messageBytes = _messageQueue.Dequeue();
-                        SBP_Enums.MessageTypes messageTypeEnum = SBP_Enums.MessageTypes.Unknown;
-                        ushort messageType = BitConverter.ToUInt16(new byte[] { messageBytes[1], messageBytes[2] }, 0);
-                        if (Enum.IsDefined(typeof(SBP_Enums.MessageTypes), (int)messageType))
-                            messageTypeEnum = (SBP_Enums.MessageTypes)(int)(int)messageType;
-                        message = new SBPRawMessageEventArgs(messageTypeEnum, messageBytes);
-                        somethingToDo = true;
-                    }
+                    sendMessage = new SBPRawMessageEventArgs(messageTypeEnum, message);
                 }
-
-                if (somethingToDo)
-                {
-                    if (sendException != null)
-                        OnSendException(sendException);
-
-                    if (readException != null)
-                        OnReadException(readException);
-
-                    if (message != null)
-                        OnReceivedRawMessage(message);
-                }
-                else
-                    Thread.Sleep(10);
-
             }
+
+            if (sendMessage != null)
+            {
+                OnReceivedRawMessage(sendMessage);
+                return true;
+            }
+            else
+                return false;
         }
 
         protected void OnReceivedRawMessage(SBPRawMessageEventArgs e)

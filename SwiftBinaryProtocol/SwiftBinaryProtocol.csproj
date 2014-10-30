@@ -30,6 +30,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="PInvokeSerialPort, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\PInvokeSerialPort\PInvokeSerialPort\bin\Release\PInvokeSerialPort.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -60,6 +64,7 @@
     <Compile Include="MessageStructs\VelocityNED.cs" />
     <Compile Include="SBPRawReceiverSender.cs" />
     <Compile Include="SBPReceiverSender.cs" />
+    <Compile Include="SBPReceiverSenderBase.cs" />
     <Compile Include="SBP_Enums.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
