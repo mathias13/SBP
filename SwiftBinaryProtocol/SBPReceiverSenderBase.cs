@@ -1,7 +1,7 @@
 ﻿using SwiftBinaryProtocol.Eventarguments;
 using System;
 using System.Collections.Generic;
-using System.IO.Ports;
+using PInvokeSerialPort;
 using System.Threading;
 
 namespace SwiftBinaryProtocol
@@ -31,9 +31,7 @@ namespace SwiftBinaryProtocol
         private int _baudRate = 19200;
 
         protected Queue<byte> _receivedBytes;
-
-        private byte[] _buffer;
-
+        
         public const byte PREAMBLE = 0x55;
 
         public const int MAX_BYTE_BLOCK_SIZE = 4096;
@@ -71,17 +69,22 @@ namespace SwiftBinaryProtocol
             bool restart = false;
             Thread.Sleep(1000);
             _receivedBytes = new Queue<byte>();
+            
             while(!_receiveSendThreadStopped)
             {
                 try
                 {
-                    using(SerialPort serialPort = new SerialPort(_comPort, _baudRate, Parity.None, 8, StopBits.One))
+
+                    using(SerialPort serialPort = new SerialPort(_comPort, _baudRate))
                     {
-                        serialPort.DtrEnable = true;
-                        serialPort.RtsEnable = true;
-                        serialPort.Handshake = Handshake.RequestToSend;
+                        serialPort.DataBits = 8;
+                        serialPort.Parity = Parity.None;
+                        serialPort.StopBits = StopBits.one;
+                        serialPort.RxQueue = 16384;
+                        serialPort.UseDtr = HsOutput.Handshake;
+                        serialPort.UseRts = HsOutput.Handshake;
                         serialPort.Open();
-                        StartReading(serialPort);
+                        serialPort.DataReceived += serialPort_DataReceived;
                         while(!_receiveSendThreadStopped)
                         {
                             if(_sendMessageQueue.Count > 0)
@@ -92,8 +95,8 @@ namespace SwiftBinaryProtocol
 
                                 try
                                 {
-                                    serialPort.BaseStream.Write(messageToSend, 0, messageToSend.Length);
-                                    serialPort.BaseStream.Flush();
+                                    serialPort.Write(messageToSend);
+                                    serialPort.Flush();
                                 }
                                 catch (Exception e)
                                 {
@@ -108,7 +111,7 @@ namespace SwiftBinaryProtocol
 
                             ProcessReading(restart);
 
-                            Thread.Sleep(1);
+                            Thread.Sleep(4);
                         }
 
                     }
@@ -125,29 +128,11 @@ namespace SwiftBinaryProtocol
             }
         }
 
-        private void StartReading(SerialPort port)
+        private void serialPort_DataReceived(byte[] obj)
         {
-            _buffer = new byte[MAX_BYTE_BLOCK_SIZE];
-            port.BaseStream.BeginRead(_buffer, 0, _buffer.Length, new AsyncCallback(ReadComplete), port);
-        }
-
-        private void ReadComplete(IAsyncResult ar)
-        {
-            SerialPort port = ar.AsyncState as SerialPort;
-            if(port == null)
-                return;
-            if(!port.IsOpen)
-                return;
-
-            byte[] bytesRead = new byte[port.BaseStream.EndRead(ar)];
-            Buffer.BlockCopy(_buffer, 0, bytesRead, 0, bytesRead.Length);
-
-            StartReading(port);
-
-            Thread.Sleep(1);
-            lock(_syncobject)
-                foreach (byte byteRead in bytesRead)
-                    _receivedBytes.Enqueue(byteRead);
+            lock (_syncobject)
+                foreach(byte Byte in obj)
+                    _receivedBytes.Enqueue(Byte);
         }
 
         protected virtual void ProcessReading(bool restart)
