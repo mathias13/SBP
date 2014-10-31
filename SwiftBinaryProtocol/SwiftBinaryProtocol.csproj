@@ -30,10 +30,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="PInvokeSerialPort, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\PInvokeSerialPort\PInvokeSerialPort\bin\Release\PInvokeSerialPort.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -67,6 +63,12 @@
     <Compile Include="SBPReceiverSenderBase.cs" />
     <Compile Include="SBP_Enums.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Win32\COMMPROP.cs" />
+    <Compile Include="Win32\COMMTIMEOUTS.cs" />
+    <Compile Include="Win32\COMSTAT.cs" />
+    <Compile Include="Win32\DCB.cs" />
+    <Compile Include="Win32\OVERLAPPED.cs" />
+    <Compile Include="Win32\Win32Com.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="LICENSE.txt" />

@@ -2,7 +2,6 @@
 using SwiftBinaryProtocol.MessageStructs;
 using System;
 using System.Collections.Generic;
-using PInvokeSerialPort;
 using System.Threading;
 using System.Threading.Tasks;
 

@@ -1,8 +1,9 @@
 ﻿using SwiftBinaryProtocol.Eventarguments;
 using System;
 using System.Collections.Generic;
-using PInvokeSerialPort;
+using SwiftBinaryProtocol.Win32;
 using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace SwiftBinaryProtocol
 {
@@ -31,10 +32,8 @@ namespace SwiftBinaryProtocol
         private int _baudRate = 19200;
 
         protected Queue<byte> _receivedBytes;
-        
+                
         public const byte PREAMBLE = 0x55;
-
-        public const int MAX_BYTE_BLOCK_SIZE = 4096;
 
         #endregion
 
@@ -66,7 +65,12 @@ namespace SwiftBinaryProtocol
 
         private void ReceiveSendThread()
         {
+            byte[] buffer = new byte[256];
             bool restart = false;
+            IntPtr portHandle = IntPtr.Zero;
+            OVERLAPPED overlapped = new OVERLAPPED();
+            IntPtr overlappedPointer = Marshal.AllocHGlobal(Marshal.SizeOf(overlapped));
+            Marshal.StructureToPtr(overlapped, overlappedPointer, true);
             Thread.Sleep(1000);
             _receivedBytes = new Queue<byte>();
             
@@ -74,58 +78,109 @@ namespace SwiftBinaryProtocol
             {
                 try
                 {
-
-                    using(SerialPort serialPort = new SerialPort(_comPort, _baudRate))
+                    if (portHandle == IntPtr.Zero)
                     {
-                        serialPort.DataBits = 8;
-                        serialPort.Parity = Parity.None;
-                        serialPort.StopBits = StopBits.one;
-                        serialPort.RxQueue = 16384;
-                        serialPort.UseDtr = HsOutput.Handshake;
-                        serialPort.UseRts = HsOutput.Handshake;
-                        serialPort.Open();
-                        serialPort.DataReceived += serialPort_DataReceived;
-                        while(!_receiveSendThreadStopped)
+                        portHandle = Win32Com.CreateFile(_comPort, Win32Com.GENERIC_READ | Win32Com.GENERIC_WRITE, 0, IntPtr.Zero,
+                            Win32Com.OPEN_EXISTING, Win32Com.FILE_FLAG_OVERLAPPED, IntPtr.Zero);
+
+                        if (portHandle == (IntPtr)Win32Com.INVALID_HANDLE_VALUE)
                         {
-                            if(_sendMessageQueue.Count > 0)
-                            { 
-                                byte[] messageToSend;
-                                lock (_syncobject)
-                                    messageToSend = _sendMessageQueue.Dequeue();
-
-                                try
-                                {
-                                    serialPort.Write(messageToSend);
-                                    serialPort.Flush();
-                                }
-                                catch (Exception e)
-                                {
-                                    lock (_syncobject)
-                                    {
-                                        if (_sendMessageQueue.Count > 100)
-                                            _sendMessageQueue.Clear();
-                                        _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(e));
-                                    }
-                                }
-                            }
-
-                            ProcessReading(restart);
-
-                            Thread.Sleep(4);
+                            if (Marshal.GetLastWin32Error() == Win32Com.ERROR_ACCESS_DENIED)
+                                throw new Exception(String.Format("Access denied for port {0}", _comPort));
+                            else
+                                throw new Exception(String.Format("Failed to open port {0}", _comPort));
                         }
 
+                        DCB dcb = new DCB();
+                        dcb.Init(false, true, true, 2, true, false, false, false, 2);
+                        dcb.BaudRate = _baudRate;
+                        dcb.ByteSize = 8;
+                        dcb.Parity = 0;
+                        dcb.StopBits = 0;
+                        dcb.XoffLim = 4096;
+                        dcb.XonLim = 8192;
+                        if (!Win32Com.SetupComm(portHandle, 8192, 4096))
+                            throw new Exception(String.Format("Failed to set queue settings for port {0}", _comPort));
+                        if (!Win32Com.SetCommState(portHandle, ref dcb))
+                            throw new Exception(String.Format("Failed to set comm settings for port {0}", _comPort));
+
                     }
+
+                    uint lpdwFlags = 0;
+                    if (!Win32Com.GetHandleInformation(portHandle, out lpdwFlags))
+                        throw new Exception(String.Format("Port {0} went offline", _comPort));
+
+                    if (_sendMessageQueue.Count > 0)
+                    {
+                        byte[] messageToSend;
+                        lock (_syncobject)
+                            messageToSend = _sendMessageQueue.Dequeue();
+                        
+                        while (messageToSend.Length > 0)
+                        {
+                            uint bytesWritten = 0;
+                            if (!Win32Com.WriteFile(portHandle, messageToSend, (uint)messageToSend.Length, out bytesWritten, overlappedPointer))
+                            {
+                                if (Marshal.GetLastWin32Error() != Win32Com.ERROR_IO_PENDING)
+                                    lock (_syncobject)
+                                        _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
+                                break;
+                            }
+                            else
+                            {
+                                byte[] temp = new byte[messageToSend.Length - bytesWritten];
+                                Buffer.BlockCopy(messageToSend, (int)bytesWritten, temp, 0, temp.Length);
+                                messageToSend = temp;
+                            }
+                        }
+                    }
+
+                    while(true)
+                    {
+                        uint bytesRead = 0;
+                        if (!Win32Com.ReadFile(portHandle, buffer, (uint)buffer.Length, out bytesRead, overlappedPointer))
+                        {
+                            if (Marshal.GetLastWin32Error() == Win32Com.ERROR_IO_PENDING)
+                                Win32Com.CancelIo(portHandle);
+                            else
+                                throw new Exception(String.Format("Failed to read port {0}", _comPort));
+                            break;
+                        }
+                        if (bytesRead > 0)
+                        {
+                            byte[] bytes = new byte[bytesRead];
+                            Buffer.BlockCopy(buffer, 0, bytes, 0, (int)bytesRead);
+                            lock (_syncobject)
+                                foreach (byte Byte in bytes)
+                                    _receivedBytes.Enqueue(Byte);
+                        }
+                        else
+                        {
+                            Thread.Sleep(1);
+                            break;
+                        }
+                    }
+
+                    Thread.Sleep(0);
+                    ProcessReading(restart);
+
                 }
                 catch(Exception e)
                 {
                     _receivedBytes.Clear();
+                    Win32Com.CancelIo(portHandle);
+                    Win32Com.CloseHandle(portHandle);
+                    portHandle = IntPtr.Zero;
                     restart = true;
                     lock (_syncobject)
                         _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(e));
 
-                    Thread.Sleep(1000);
+                    Thread.Sleep(5000);
                 }
             }
+            Win32Com.CancelIo(portHandle);
+            Win32Com.CloseHandle(portHandle);
+            Marshal.FreeHGlobal(overlappedPointer);
         }
 
         private void serialPort_DataReceived(byte[] obj)
