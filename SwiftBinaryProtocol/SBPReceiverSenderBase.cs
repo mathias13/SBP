@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using SwiftBinaryProtocol.Win32;
 using System.Threading;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace SwiftBinaryProtocol
 {
@@ -68,9 +69,6 @@ namespace SwiftBinaryProtocol
             byte[] buffer = new byte[256];
             bool restart = false;
             IntPtr portHandle = IntPtr.Zero;
-            OVERLAPPED overlapped = new OVERLAPPED();
-            IntPtr overlappedPointer = Marshal.AllocHGlobal(Marshal.SizeOf(overlapped));
-            Marshal.StructureToPtr(overlapped, overlappedPointer, true);
             Thread.Sleep(1000);
             _receivedBytes = new Queue<byte>();
             
@@ -81,7 +79,7 @@ namespace SwiftBinaryProtocol
                     if (portHandle == IntPtr.Zero)
                     {
                         portHandle = Win32Com.CreateFile(_comPort, Win32Com.GENERIC_READ | Win32Com.GENERIC_WRITE, 0, IntPtr.Zero,
-                            Win32Com.OPEN_EXISTING, Win32Com.FILE_FLAG_OVERLAPPED, IntPtr.Zero);
+                            Win32Com.OPEN_EXISTING, 0, IntPtr.Zero);
 
                         if (portHandle == (IntPtr)Win32Com.INVALID_HANDLE_VALUE)
                         {
@@ -91,18 +89,25 @@ namespace SwiftBinaryProtocol
                                 throw new Exception(String.Format("Failed to open port {0}", _comPort));
                         }
 
+                        COMMTIMEOUTS commTimeouts = new COMMTIMEOUTS();
+                        commTimeouts.ReadIntervalTimeout = uint.MaxValue;
+                        commTimeouts.ReadTotalTimeoutConstant = 0;
+                        commTimeouts.ReadTotalTimeoutMultiplier = 0;
+                        commTimeouts.WriteTotalTimeoutConstant = 0;
+                        commTimeouts.WriteTotalTimeoutMultiplier = 0;
                         DCB dcb = new DCB();
                         dcb.Init(false, true, true, 2, true, false, false, false, 2);
                         dcb.BaudRate = _baudRate;
                         dcb.ByteSize = 8;
                         dcb.Parity = 0;
                         dcb.StopBits = 0;
-                        dcb.XoffLim = 4096;
-                        dcb.XonLim = 8192;
                         if (!Win32Com.SetupComm(portHandle, 8192, 4096))
                             throw new Exception(String.Format("Failed to set queue settings for port {0}", _comPort));
                         if (!Win32Com.SetCommState(portHandle, ref dcb))
                             throw new Exception(String.Format("Failed to set comm settings for port {0}", _comPort));
+                        if (!Win32Com.SetCommTimeouts(portHandle, ref commTimeouts))
+                            throw new Exception(String.Format("Failed to set comm timeouts for port {0}", _comPort));
+
 
                     }
 
@@ -116,50 +121,39 @@ namespace SwiftBinaryProtocol
                         lock (_syncobject)
                             messageToSend = _sendMessageQueue.Dequeue();
                         
-                        while (messageToSend.Length > 0)
+                        uint bytesWritten = 0;
+                        if (!Win32Com.WriteFile(portHandle, messageToSend, (uint)messageToSend.Length, out bytesWritten, IntPtr.Zero))
                         {
-                            uint bytesWritten = 0;
-                            if (!Win32Com.WriteFile(portHandle, messageToSend, (uint)messageToSend.Length, out bytesWritten, overlappedPointer))
-                            {
-                                if (Marshal.GetLastWin32Error() != Win32Com.ERROR_IO_PENDING)
-                                    lock (_syncobject)
-                                        _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
-                                break;
-                            }
-                            else
-                            {
-                                byte[] temp = new byte[messageToSend.Length - bytesWritten];
-                                Buffer.BlockCopy(messageToSend, (int)bytesWritten, temp, 0, temp.Length);
-                                messageToSend = temp;
-                            }
-                        }
-                    }
-
-                    while(true)
-                    {
-                        uint bytesRead = 0;
-                        if (!Win32Com.ReadFile(portHandle, buffer, (uint)buffer.Length, out bytesRead, overlappedPointer))
-                        {
-                            if (Marshal.GetLastWin32Error() == Win32Com.ERROR_IO_PENDING)
-                                Win32Com.CancelIo(portHandle);
-                            else
-                                throw new Exception(String.Format("Failed to read port {0}", _comPort));
+                            if (Marshal.GetLastWin32Error() != Win32Com.ERROR_IO_PENDING)
+                                lock (_syncobject)
+                                    _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
                             break;
-                        }
-                        if (bytesRead > 0)
-                        {
-                            byte[] bytes = new byte[bytesRead];
-                            Buffer.BlockCopy(buffer, 0, bytes, 0, (int)bytesRead);
-                            lock (_syncobject)
-                                foreach (byte Byte in bytes)
-                                    _receivedBytes.Enqueue(Byte);
                         }
                         else
                         {
-                            Thread.Sleep(1);
-                            break;
+                            byte[] temp = new byte[messageToSend.Length - bytesWritten];
+                            Buffer.BlockCopy(messageToSend, (int)bytesWritten, temp, 0, temp.Length);
+                            messageToSend = temp;
                         }
                     }
+                    uint bytesRead = 0;
+                    if (!Win32Com.ReadFile(portHandle, buffer, (uint)buffer.Length, out bytesRead, IntPtr.Zero))
+                    {
+                        if (Marshal.GetLastWin32Error() == Win32Com.ERROR_IO_PENDING)
+                            Win32Com.CancelIo(portHandle);
+                        else
+                            throw new Exception(String.Format("Failed to read port {0}", _comPort));
+                    }
+                    if (bytesRead > 0)
+                    {
+                        byte[] bytes = new byte[bytesRead];
+                        Buffer.BlockCopy(buffer, 0, bytes, 0, (int)bytesRead);
+                        lock (_syncobject)
+                            foreach (byte Byte in bytes)
+                                _receivedBytes.Enqueue(Byte);
+                    }
+                    else
+                        Thread.Sleep(1);
 
                     Thread.Sleep(0);
                     ProcessReading(restart);
@@ -180,7 +174,6 @@ namespace SwiftBinaryProtocol
             }
             Win32Com.CancelIo(portHandle);
             Win32Com.CloseHandle(portHandle);
-            Marshal.FreeHGlobal(overlappedPointer);
         }
 
         private void serialPort_DataReceived(byte[] obj)

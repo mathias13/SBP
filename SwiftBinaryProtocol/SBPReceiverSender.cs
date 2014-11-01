@@ -123,7 +123,7 @@ namespace SwiftBinaryProtocol
         {
             if(restart)
             {
-                _preambleFound = true;
+                _preambleFound = false;
                 _message = new SBPReceiveMessage();
             }
 

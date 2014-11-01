@@ -6,10 +6,10 @@ namespace SwiftBinaryProtocol.Win32
     [StructLayout(LayoutKind.Sequential)]
     internal struct COMMTIMEOUTS
     {
-        internal Int32 ReadIntervalTimeout;
-        internal Int32 ReadTotalTimeoutMultiplier;
-        internal Int32 ReadTotalTimeoutConstant;
-        internal Int32 WriteTotalTimeoutMultiplier;
-        internal Int32 WriteTotalTimeoutConstant;
+        internal UInt32 ReadIntervalTimeout;
+        internal UInt32 ReadTotalTimeoutMultiplier;
+        internal UInt32 ReadTotalTimeoutConstant;
+        internal UInt32 WriteTotalTimeoutMultiplier;
+        internal UInt32 WriteTotalTimeoutConstant;
     }
 }
