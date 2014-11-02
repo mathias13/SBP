@@ -212,6 +212,10 @@ namespace SwiftBinaryProtocol
                                     case SBP_Enums.MessageTypes.PRINT:
                                         messageData = new Print(_message.Payload.ToArray());
                                         break;
+
+                                    case SBP_Enums.MessageTypes.BASEPOS:
+                                        messageData = new BasePosition(_message.Payload.ToArray());
+                                        break;
                                 }
 
                                 lock (_syncobject)

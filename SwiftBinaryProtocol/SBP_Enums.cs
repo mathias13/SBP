@@ -7,20 +7,21 @@ namespace SwiftBinaryProtocol
         public enum MessageTypes
         {
             Unknown = 0,
-            STARTUP = 65280,
-            HEARTBEAT = 65535,
+            PRINT = 16,
+            IAR_STATE = 25,
+            OBS = 65,
+            BASEPOS = 68,
+            OBS_HDR = 69,
             GPSTIME = 256,
-            DOPS = 518,
             POS_ECEF = 512,
             POS_LLH = 513,
             BASELINE_ECEF = 514,
             BASELINE_NED = 515,
             VEL_ECEF = 516,
-            VEL_NED = 517,    
-            OBS = 65,
-            OBS_HDR = 69,
-            IAR_STATE = 25,
-            PRINT = 16
+            VEL_NED = 517,
+            DOPS = 518,   
+            STARTUP = 65280,
+            HEARTBEAT = 65535
         }
 
         public enum FixMode
