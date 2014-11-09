@@ -177,13 +177,6 @@ namespace SwiftBinaryProtocol
             Win32Com.CloseHandle(portHandle);
         }
 
-        private void serialPort_DataReceived(byte[] obj)
-        {
-            lock (_syncobject)
-                foreach(byte Byte in obj)
-                    _receivedBytes.Enqueue(Byte);
-        }
-
         protected virtual void ProcessReading(bool restart)
         {
         }
