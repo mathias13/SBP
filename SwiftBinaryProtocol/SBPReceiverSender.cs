@@ -101,6 +101,25 @@ namespace SwiftBinaryProtocol
 
         private SBPReceiveMessage _message = new SBPReceiveMessage();
 
+        private readonly IDictionary<SBP_Enums.MessageTypes, Type> MESSAGE_STRUCTS = new Dictionary<SBP_Enums.MessageTypes, Type>()
+        {
+            {SBP_Enums.MessageTypes.BASELINE_ECEF, typeof(BaselineECEF)},
+            {SBP_Enums.MessageTypes.BASELINE_NED, typeof(BaselineNED)},
+            {SBP_Enums.MessageTypes.BASEPOS, typeof(BasePosition)},
+            {SBP_Enums.MessageTypes.DOPS, typeof(DilutionOfPrecision)},
+            {SBP_Enums.MessageTypes.GPSTIME, typeof(GPSTime)},
+            {SBP_Enums.MessageTypes.HEARTBEAT, typeof(Heartbeat)},
+            {SBP_Enums.MessageTypes.IAR_STATE, typeof(IARState)},
+            {SBP_Enums.MessageTypes.OBS, typeof(Observation)},
+            {SBP_Enums.MessageTypes.OBS_HDR, typeof(ObservationHeader)},
+            {SBP_Enums.MessageTypes.POS_ECEF, typeof(PosistionECEF)},
+            {SBP_Enums.MessageTypes.POS_LLH, typeof(PositionLLH)},
+            {SBP_Enums.MessageTypes.PRINT, typeof(Print)},
+            {SBP_Enums.MessageTypes.STARTUP, typeof()},
+            {SBP_Enums.MessageTypes.VEL_ECEF, typeof(VelocityECEF)},
+            {SBP_Enums.MessageTypes.VEL_NED, typeof(VelocityNED)}
+        };
+
         #endregion
 
         #region Events
@@ -158,68 +177,12 @@ namespace SwiftBinaryProtocol
                                 if (Enum.IsDefined(typeof(SBP_Enums.MessageTypes), (int)_message.MessageType))
                                     messageTypeEnum = (SBP_Enums.MessageTypes)(int)_message.MessageType;
 
-                                object messageData = new object();
-                                switch (messageTypeEnum)
+                                if(MESSAGE_STRUCTS.ContainsKey(messageTypeEnum))
                                 {
-                                    case SBP_Enums.MessageTypes.BASELINE_ECEF:
-                                        messageData = new BaselineECEF(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.BASELINE_NED:
-                                        messageData = new BaselineNED(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.DOPS:
-                                        messageData = new DilutionOfPrecision(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.GPSTIME:
-                                        messageData = new GPSTime(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.HEARTBEAT:
-                                        messageData = new Heartbeat(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.POS_ECEF:
-                                        messageData = new PosistionECEF(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.POS_LLH:
-                                        messageData = new PositionLLH(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.VEL_ECEF:
-                                        messageData = new VelocityECEF(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.VEL_NED:
-                                        messageData = new VelocityNED(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.OBS:
-                                        messageData = new Observation(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.OBS_HDR:
-                                        messageData = new ObservationHeader(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.IAR_STATE:
-                                        messageData = new IARState(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.PRINT:
-                                        messageData = new Print(_message.Payload.ToArray());
-                                        break;
-
-                                    case SBP_Enums.MessageTypes.BASEPOS:
-                                        messageData = new BasePosition(_message.Payload.ToArray());
-                                        break;
+                                    object messageData = Activator.CreateInstance(MESSAGE_STRUCTS[messageTypeEnum], _message.Payload.ToArray());
+                                    lock (_syncobject)
+                                        _messageQueue.Enqueue(new SBPMessageEventArgs((int)_message.SenderID.Value, messageTypeEnum, messageData));
                                 }
-
-                                lock (_syncobject)
-                                    _messageQueue.Enqueue(new SBPMessageEventArgs((int)_message.SenderID.Value, messageTypeEnum, messageData));
                             }
                             else
                             {
