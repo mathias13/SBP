@@ -158,6 +158,7 @@ namespace SwiftBinaryProtocol
                     Thread.Sleep(0);
                     ProcessReading(restart);
 
+                    restart = false;
                 }
                 catch(Exception e)
                 {
