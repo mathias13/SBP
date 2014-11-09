@@ -49,14 +49,11 @@ namespace SwiftBinaryProtocol
                 {
                     if (_messageBytes.Count == 0)
                         _messageBytes.Add(PREAMBLE);
-
-                    while (_messageBytes.Count < 6 && _receivedBytes.Count > 0)
+                    else if(_messageBytes.Count < 6)
                         _messageBytes.Add(_receivedBytes.Dequeue());
-
-                    while (_messageBytes.Count < ((int)_messageBytes[5] + 8) && _messageBytes.Count >= 6 && _receivedBytes.Count > 0)
+                    else if(_messageBytes.Count < ((int)_messageBytes[5] + 8))
                         _messageBytes.Add(_receivedBytes.Dequeue());
-
-                    if (_messageBytes.Count == ((int)_messageBytes[5] + 8))
+                    else
                     {
                         List<byte> crcBytes = new List<byte>();
                         for (int i = 1; i < _messageBytes.Count - 2; i++)
