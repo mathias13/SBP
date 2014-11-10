@@ -153,7 +153,7 @@ namespace SwiftBinaryProtocol
                                 _receivedBytes.Enqueue(Byte);
                     }
                     else
-                        Thread.Sleep(0);
+                        Thread.Sleep(1);
 
                     ProcessReading(restart);
 
@@ -210,7 +210,7 @@ namespace SwiftBinaryProtocol
                         OnReadException(readException);
                 }
                 else if (!InvokeThreadExecute())
-                    Thread.Sleep(0);
+                    Thread.Sleep(1);
 
             }
         }

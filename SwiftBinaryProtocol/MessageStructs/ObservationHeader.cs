@@ -98,7 +98,7 @@ namespace SwiftBinaryProtocol.MessageStructs
             {
                 DateTime datum = new DateTime(1980, 1, 6, 0, 0, 0);
                 datum = datum.AddDays((double)_wn * 7);
-                datum = datum.AddMilliseconds(TimeOfWeek);
+                datum = datum.AddSeconds(TimeOfWeek);
                 return datum;
             }
         }    
