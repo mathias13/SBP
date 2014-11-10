@@ -91,5 +91,16 @@ namespace SwiftBinaryProtocol.MessageStructs
         {
             get { return _observations; }
         }
+        
+        public DateTime GPSDateTime
+        {
+            get
+            {
+                DateTime datum = new DateTime(1980, 1, 6, 0, 0, 0);
+                datum = datum.AddDays((double)_wn * 7);
+                datum = datum.AddMilliseconds(TimeOfWeek);
+                return datum;
+            }
+        }    
     }
 }
