@@ -63,7 +63,8 @@ namespace SwiftBinaryProtocol
                         byte[] crcSumBytes = new byte[2] { _messageBytes[_messageBytes.Count - 2], _messageBytes[_messageBytes.Count - 1] };
                         ushort crcInMessage = BitConverter.ToUInt16(crcSumBytes, 0);
                         if (crc == crcInMessage)
-                            _messageQueue.Enqueue(_messageBytes.ToArray());
+                            lock(_syncobject)
+                                _messageQueue.Enqueue(_messageBytes.ToArray());
                         else
                         {
                             lock (_syncobject)
