@@ -36,6 +36,8 @@ namespace SwiftBinaryProtocol
                 
         public const byte PREAMBLE = 0x55;
 
+        public const int SEND_TIMEOUT_MS = 5; //Prevents rx overrun in Piksi
+
         #endregion
 
         #region Events
@@ -68,6 +70,7 @@ namespace SwiftBinaryProtocol
         {
             byte[] buffer = new byte[256];
             bool restart = false;
+            DateTime sendTimeout = DateTime.MinValue;
             IntPtr portHandle = IntPtr.Zero;
             Thread.Sleep(1000);
             _receivedBytes = new Queue<byte>();
@@ -115,7 +118,7 @@ namespace SwiftBinaryProtocol
                     if (!Win32Com.GetHandleInformation(portHandle, out lpdwFlags))
                         throw new Exception(String.Format("Port {0} went offline", _comPort));
 
-                    if (_sendMessageQueue.Count > 0)
+                    if (_sendMessageQueue.Count > 0 && sendTimeout < DateTime.Now)
                     {
                         byte[] messageToSend;
                         lock (_syncobject)
@@ -126,6 +129,8 @@ namespace SwiftBinaryProtocol
                             if (Marshal.GetLastWin32Error() != Win32Com.ERROR_IO_PENDING)
                                 lock (_syncobject)
                                     _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
+
+                        sendTimeout = DateTime.Now.AddMilliseconds((double)SEND_TIMEOUT_MS);
                     }
                     uint bytesRead = 0;
                     if (!Win32Com.ReadFile(portHandle, buffer, (uint)buffer.Length, out bytesRead, IntPtr.Zero))
