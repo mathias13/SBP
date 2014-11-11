@@ -125,21 +125,16 @@ namespace SwiftBinaryProtocol
                             messageToSend = _sendMessageQueue.Dequeue();
                         
                         uint bytesWritten = 0;
-                        if (!Win32Com.WriteFile(portHandle, messageToSend, (uint)messageToSend.Length, out bytesWritten, IntPtr.Zero))
-                            if (Marshal.GetLastWin32Error() != Win32Com.ERROR_IO_PENDING)
-                                lock (_syncobject)
-                                    _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
+                        if (!Win32Com.WriteFile(portHandle, messageToSend, (uint)messageToSend.Length, out bytesWritten, IntPtr.Zero)
+                            lock (_syncobject)
+                                _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
 
                         sendTimeout = DateTime.Now.AddMilliseconds((double)SEND_TIMEOUT_MS);
                     }
                     uint bytesRead = 0;
                     if (!Win32Com.ReadFile(portHandle, buffer, (uint)buffer.Length, out bytesRead, IntPtr.Zero))
-                    {
-                        if (Marshal.GetLastWin32Error() == Win32Com.ERROR_IO_PENDING)
-                            Win32Com.CancelIo(portHandle);
-                        else
-                            throw new Exception(String.Format("Failed to read port {0}", _comPort));
-                    }
+                        throw new Exception(String.Format("Failed to read port {0}", _comPort));
+
                     if (bytesRead > 0)
                     {
                         byte[] bytes = new byte[bytesRead];
