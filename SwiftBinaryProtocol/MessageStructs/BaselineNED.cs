@@ -42,14 +42,29 @@ namespace SwiftBinaryProtocol.MessageStructs
             get { return _n; }
         }
 
+        public double BaselineNorthMeters
+        {
+            get { return (double)_n / 1000; }
+        }
+
         public int BaselineEast
         {
             get { return _e; }
         }
 
+        public double BaselineEastMeters
+        {
+            get { return (double)_e / 1000; }
+        }
+
         public int BaselineDown
         {
             get { return _d; }
+        }
+
+        public double BaselineDownMeters
+        {
+            get { return (double)_d / 1000; }
         }
 
         public ushort HorizontalAccuracyEstimate
