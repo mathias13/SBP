@@ -118,7 +118,8 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.STARTUP, typeof(Startup)},
             {SBP_Enums.MessageTypes.VEL_ECEF, typeof(VelocityECEF)},
             {SBP_Enums.MessageTypes.VEL_NED, typeof(VelocityNED)},
-            {SBP_Enums.MessageTypes.RESET_FILTERS, typeof(ResetFilters)}
+            {SBP_Enums.MessageTypes.RESET_FILTERS, typeof(ResetFilters)},
+            {SBP_Enums.MessageTypes.INIT_BASE, typeof(InitBase)}
         };
 
         #endregion

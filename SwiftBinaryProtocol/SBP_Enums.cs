@@ -10,6 +10,7 @@ namespace SwiftBinaryProtocol
             PRINT = 16,
             IAR_STATE = 25,
             RESET_FILTERS = 34,
+            INIT_BASE = 34,
             OBS = 65,
             BASEPOS = 68,
             OBS_HDR = 69,
