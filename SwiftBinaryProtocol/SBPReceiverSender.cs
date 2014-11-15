@@ -115,7 +115,7 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.POS_ECEF, typeof(PosistionECEF)},
             {SBP_Enums.MessageTypes.POS_LLH, typeof(PositionLLH)},
             {SBP_Enums.MessageTypes.PRINT, typeof(Print)},
-            {SBP_Enums.MessageTypes.STARTUP, typeof()},
+            {SBP_Enums.MessageTypes.STARTUP, typeof(Startup)},
             {SBP_Enums.MessageTypes.VEL_ECEF, typeof(VelocityECEF)},
             {SBP_Enums.MessageTypes.VEL_NED, typeof(VelocityNED)}
         };
