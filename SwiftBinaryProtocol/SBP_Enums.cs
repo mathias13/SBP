@@ -9,6 +9,7 @@ namespace SwiftBinaryProtocol
             Unknown = 0,
             PRINT = 16,
             IAR_STATE = 25,
+            RESET_FILTERS = 34,
             OBS = 65,
             BASEPOS = 68,
             OBS_HDR = 69,
@@ -21,7 +22,7 @@ namespace SwiftBinaryProtocol
             VEL_NED = 517,
             DOPS = 518,   
             STARTUP = 65280,
-            HEARTBEAT = 65535
+            HEARTBEAT = 65535            
         }
 
         public enum FixMode

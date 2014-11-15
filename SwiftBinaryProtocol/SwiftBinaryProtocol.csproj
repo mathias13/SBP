@@ -47,6 +47,7 @@
     <Compile Include="MessageStructs\BaselineECEF.cs" />
     <Compile Include="MessageStructs\BaselineNED.cs" />
     <Compile Include="MessageStructs\DilutionOfPrecision.cs" />
+    <Compile Include="MessageStructs\ResetFilters.cs" />
     <Compile Include="MessageStructs\Startup.cs" />
     <Compile Include="MessageStructs\GPSTime.cs" />
     <Compile Include="MessageStructs\Heartbeat.cs" />
