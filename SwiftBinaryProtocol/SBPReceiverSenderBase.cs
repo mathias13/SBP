@@ -10,8 +10,14 @@ namespace SwiftBinaryProtocol
 {
     public abstract class SBPReceiverSenderBase : IDisposable
     {
-        #region Private Variables
+        #region Constants
         
+        public const int SBP_FRAMING_MAX_PAYLOAD_SIZE = 255;
+
+        #endregion
+
+        #region Private Variables
+
         protected object _syncobject = new object();
 
         private bool _receiveSendThreadStopped = false;
