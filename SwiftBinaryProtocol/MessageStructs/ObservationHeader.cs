@@ -24,6 +24,8 @@ namespace SwiftBinaryProtocol.MessageStructs
 
         private const int HEADER_SEQ_MASK = ((1 << 4) - 1);
 
+        public const int MAX_OBSERVATIONS = HEADER_SEQ_MASK;
+
         public ObservationHeader(double tow, ushort wn, byte total, byte count, Observation[] observation)
         {
             _tow = (uint)(tow * TOW_MULTIPLIER);
