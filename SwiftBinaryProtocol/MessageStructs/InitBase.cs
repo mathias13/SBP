@@ -2,10 +2,19 @@
 
 namespace SwiftBinaryProtocol.MessageStructs
 {
-    public struct InitBase
+    public struct InitBase : IPayload
     {
         public InitBase(byte[] data)
         {
+        }
+
+        public InitBase()
+        {
+        }
+
+        public byte[] Data
+        {
+            get { return new byte[0]; }
         }
     }
 }

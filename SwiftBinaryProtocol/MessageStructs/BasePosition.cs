@@ -21,8 +21,8 @@ namespace SwiftBinaryProtocol.MessageStructs
         public BasePosition(byte[] data)
         {
             _lat = BitConverter.ToDouble(data, 0);
-            _lon = BitConverter.ToDouble(data, 4);
-            _height = BitConverter.ToDouble(data, 8);
+            _lon = BitConverter.ToDouble(data, 8);
+            _height = BitConverter.ToDouble(data, 16);
         }
         
         public double PosLatitude
