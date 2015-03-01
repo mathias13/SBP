@@ -8,6 +8,7 @@ namespace SwiftBinaryProtocol
         {
             Unknown = 0,
             PRINT = 16,
+            THREAD_STATE =  23,
             IAR_STATE = 25,
             RESET_FILTERS = 34,
             INIT_BASE = 35,
