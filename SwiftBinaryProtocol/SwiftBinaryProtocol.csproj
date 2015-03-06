@@ -60,6 +60,8 @@
     <Compile Include="MessageStructs\BasePosition.cs" />
     <Compile Include="MessageStructs\PositionLLH.cs" />
     <Compile Include="MessageStructs\Print.cs" />
+    <Compile Include="MessageStructs\ThreadState.cs" />
+    <Compile Include="MessageStructs\UARTState.cs" />
     <Compile Include="MessageStructs\VelocityECEF.cs" />
     <Compile Include="MessageStructs\VelocityNED.cs" />
     <Compile Include="SBPRawReceiverSender.cs" />

@@ -8,10 +8,6 @@ namespace SwiftBinaryProtocol.MessageStructs
         {
         }
 
-        public InitBase()
-        {
-        }
-
         public byte[] Data
         {
             get { return new byte[0]; }
