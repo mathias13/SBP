@@ -26,7 +26,7 @@ namespace SwiftBinaryProtocol.MessageStructs
             _z = BitConverter.ToInt32(data, 12);
             _accuracy = BitConverter.ToUInt16(data, 16);
             _n_sats = data[18];
-            _fixMode = (data[19] & 0x1) > 0 ? SBP_Enums.FixMode.RTK : SBP_Enums.FixMode.SinglePointPosition;
+            _fixMode = (data[19] & 0x1) > 0 ? SBP_Enums.FixMode.Fixed_RTK : SBP_Enums.FixMode.Float_RTK;
         }
 
         public uint TimeOfWeek
