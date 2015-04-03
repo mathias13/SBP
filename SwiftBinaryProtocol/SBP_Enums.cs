@@ -31,8 +31,8 @@ namespace SwiftBinaryProtocol
         public enum FixMode
         {
             SinglePointPosition = 0,
-            Float_RTK = 1,
-            Fixed_RTK = 2
+            Fixed_RTK = 1,
+            Float_RTK = 2
         }
     }
 }
