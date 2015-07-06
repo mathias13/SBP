@@ -14,6 +14,8 @@ namespace SwiftBinaryProtocol
         
         public const int SBP_FRAMING_MAX_PAYLOAD_SIZE = 255;
 
+        public const int SBP_CONSOLE_SENDER_ID = 0x42;
+
         #endregion
 
         #region Private Variables
