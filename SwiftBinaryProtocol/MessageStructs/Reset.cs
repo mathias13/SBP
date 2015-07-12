@@ -4,10 +4,6 @@ namespace SwiftBinaryProtocol.MessageStructs
 {
     public struct Reset : IPayload
     {
-        public Reset()
-        {
-        }
-
         public Reset(byte[] data)
         {
         }
