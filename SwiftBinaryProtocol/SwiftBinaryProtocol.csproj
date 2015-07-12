@@ -51,6 +51,7 @@
     <Compile Include="MessageStructs\Ephemeris.cs" />
     <Compile Include="MessageStructs\ExternalEvent.cs" />
     <Compile Include="MessageStructs\MaskSattelite.cs" />
+    <Compile Include="MessageStructs\Reset.cs" />
     <Compile Include="MessageStructs\ResetFilters.cs" />
     <Compile Include="MessageStructs\InitBase.cs" />
     <Compile Include="MessageStructs\Startup.cs" />
