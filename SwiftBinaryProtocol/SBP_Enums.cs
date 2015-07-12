@@ -8,6 +8,7 @@ namespace SwiftBinaryProtocol
         {
             Unknown = 0x0000,
             PRINT = 0x0010,
+            TWEET = 0x0012,
             ACQ_RESULT = 0x0015,
             THREAD_STATE =  0x0017,
             UART_STATE = 0x0018,
@@ -17,6 +18,7 @@ namespace SwiftBinaryProtocol
             OBS = 0x0041,
             BASEPOS = 0x0044,
             OBS_HDR = 0x0045,
+            EPHEMERIS = 0x0046,
             GPSTIME = 0x0100,
             EXT_EVENT = 0x0101,
             POS_ECEF = 0x0200,
