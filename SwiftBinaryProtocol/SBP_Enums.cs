@@ -10,6 +10,7 @@ namespace SwiftBinaryProtocol
             PRINT = 0x0010,
             TWEET = 0x0012,
             ACQ_RESULT = 0x0015,
+            TRACKING_STATE = 0x0016,
             THREAD_STATE =  0x0017,
             UART_STATE = 0x0018,
             IAR_STATE = 0x0019,
@@ -52,6 +53,13 @@ namespace SwiftBinaryProtocol
         {
             IAR = 1,
             DGNSS = 0,
+            UNKNOWN = -1
+        }
+
+        public enum TrackingState
+        {
+            DISABLED = 0,
+            ENABLED = 1,
             UNKNOWN = -1
         }
     }
