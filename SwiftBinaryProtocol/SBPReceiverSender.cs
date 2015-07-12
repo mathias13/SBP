@@ -122,7 +122,8 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.INIT_BASE, typeof(InitBase)},
             {SBP_Enums.MessageTypes.THREAD_STATE, typeof(SwiftBinaryProtocol.MessageStructs.ThreadState)},
             {SBP_Enums.MessageTypes.UART_STATE, typeof(UARTState)},
-            {SBP_Enums.MessageTypes.ACQ_RESULT, typeof(AquisitionResult)}
+            {SBP_Enums.MessageTypes.ACQ_RESULT, typeof(AquisitionResult)},
+            {SBP_Enums.MessageTypes.EXT_EVENT, typeof(ExternalEvent)}
         };
 
         #endregion

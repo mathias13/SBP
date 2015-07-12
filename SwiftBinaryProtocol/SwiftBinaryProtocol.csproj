@@ -48,6 +48,7 @@
     <Compile Include="MessageStructs\BaselineECEF.cs" />
     <Compile Include="MessageStructs\BaselineNED.cs" />
     <Compile Include="MessageStructs\DilutionOfPrecision.cs" />
+    <Compile Include="MessageStructs\ExternalEvent.cs" />
     <Compile Include="MessageStructs\ResetFilters.cs" />
     <Compile Include="MessageStructs\InitBase.cs" />
     <Compile Include="MessageStructs\Startup.cs" />

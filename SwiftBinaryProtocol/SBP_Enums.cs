@@ -18,6 +18,7 @@ namespace SwiftBinaryProtocol
             BASEPOS = 0x0044,
             OBS_HDR = 0x0045,
             GPSTIME = 0x0100,
+            EXT_EVENT = 0x0101,
             POS_ECEF = 0x0200,
             POS_LLH = 0x0201,
             BASELINE_ECEF = 0x0202,
