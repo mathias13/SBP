@@ -8,6 +8,7 @@ namespace SwiftBinaryProtocol
         {
             Unknown = 0x0000,
             PRINT = 0x0010,
+            ACQ_RESULT = 0x0015,
             THREAD_STATE =  0x0017,
             UART_STATE = 0x0018,
             IAR_STATE = 0x0019,
