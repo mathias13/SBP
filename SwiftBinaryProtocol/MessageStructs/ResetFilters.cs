@@ -1,20 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace SwiftBinaryProtocol.MessageStructs
 {
     public struct ResetFilters: IPayload
     {
-        public enum FilterEnum
-        {
-            IAR = 1,
-            DGNSS = 0,
-            UNKNOWN = -1
-        }
+        private SBP_Enums.ResetFilter _filter;
 
-        private FilterEnum _filter;
-
-        public ResetFilters(FilterEnum filter)
+        public ResetFilters(SBP_Enums.ResetFilter filter)
         {
             _filter = filter;
         }
@@ -36,7 +28,7 @@ namespace SwiftBinaryProtocol.MessageStructs
             }
         }
 
-        public FilterEnum Filter
+        public SBP_Enums.ResetFilter Filter
         {
             get { return _filter; }
         }

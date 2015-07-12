@@ -13,6 +13,7 @@ namespace SwiftBinaryProtocol
             THREAD_STATE =  0x0017,
             UART_STATE = 0x0018,
             IAR_STATE = 0x0019,
+            MASK_SATELLITE = 0x001B,
             RESET_FILTERS = 0x0022,
             INIT_BASE = 0x0023,
             OBS = 0x0041,
@@ -37,6 +38,20 @@ namespace SwiftBinaryProtocol
             SinglePointPosition = 0,
             Fixed_RTK = 1,
             Float_RTK = 2
+        }
+
+        public enum SatteliteMask
+        {
+            MASK_ACQUISITION = 1,
+            MASK_TRACKING = 2,
+            UNKNOWN = -1
+        }
+
+        public enum ResetFilter
+        {
+            IAR = 1,
+            DGNSS = 0,
+            UNKNOWN = -1
         }
     }
 }

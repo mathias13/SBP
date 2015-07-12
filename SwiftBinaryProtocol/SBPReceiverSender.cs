@@ -125,7 +125,8 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.ACQ_RESULT, typeof(AquisitionResult)},
             {SBP_Enums.MessageTypes.EXT_EVENT, typeof(ExternalEvent)},
             {SBP_Enums.MessageTypes.TWEET, typeof(Tweet)},
-            {SBP_Enums.MessageTypes.EPHEMERIS, typeof(Ephemeris)}
+            {SBP_Enums.MessageTypes.EPHEMERIS, typeof(Ephemeris)},
+            {SBP_Enums.MessageTypes.MASK_SATELLITE, typeof(MaskSattelite)}
         };
 
         #endregion
