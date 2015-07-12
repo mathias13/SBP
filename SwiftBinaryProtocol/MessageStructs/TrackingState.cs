@@ -41,7 +41,7 @@ namespace SwiftBinaryProtocol.MessageStructs
         public TrackingState(byte[] data)
         {
             List<TrackingChannel> trackingChannels = new List<TrackingChannel>();
-            for(int i = 0; i < data.Length; i = i + 2)
+            for(int i = 0; i < data.Length; i = i + 6)
             {
                 SBP_Enums.TrackingState trackingState = data[i] == 1 ? SBP_Enums.TrackingState.ENABLED : SBP_Enums.TrackingState.DISABLED;
                 trackingChannels.Add(new TrackingChannel(trackingState, data[i + 1], BitConverter.ToSingle(data, i + 2)));
