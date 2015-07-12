@@ -6,26 +6,26 @@ namespace SwiftBinaryProtocol
     {
         public enum MessageTypes
         {
-            Unknown = 0,
-            PRINT = 16,
-            THREAD_STATE =  23,
-            UART_STATE = 24,
-            IAR_STATE = 25,
-            RESET_FILTERS = 34,
-            INIT_BASE = 35,
-            OBS = 65,
-            BASEPOS = 68,
-            OBS_HDR = 69,
-            GPSTIME = 256,
-            POS_ECEF = 512,
-            POS_LLH = 513,
-            BASELINE_ECEF = 514,
-            BASELINE_NED = 515,
-            VEL_ECEF = 516,
-            VEL_NED = 517,
-            DOPS = 518,   
-            STARTUP = 65280,
-            HEARTBEAT = 65535            
+            Unknown = 0x0000,
+            PRINT = 0x0010,
+            THREAD_STATE =  0x0017,
+            UART_STATE = 0x0018,
+            IAR_STATE = 0x0019,
+            RESET_FILTERS = 0x0022,
+            INIT_BASE = 0x0023,
+            OBS = 0x0041,
+            BASEPOS = 0x0044,
+            OBS_HDR = 0x0045,
+            GPSTIME = 0x0100,
+            POS_ECEF = 0x0200,
+            POS_LLH = 0x0201,
+            BASELINE_ECEF = 0x0202,
+            BASELINE_NED = 0x0203,
+            VEL_ECEF = 0x0204,
+            VEL_NED = 0x0205,
+            DOPS = 0x0206,   
+            STARTUP = 0xFF00,
+            HEARTBEAT = 0xFFFF            
         }
 
         public enum FixMode
