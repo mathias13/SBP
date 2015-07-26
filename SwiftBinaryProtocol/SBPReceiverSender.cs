@@ -128,7 +128,8 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.EPHEMERIS, typeof(Ephemeris)},
             {SBP_Enums.MessageTypes.MASK_SATELLITE, typeof(MaskSattelite)},            
             {SBP_Enums.MessageTypes.RESET, typeof(Reset)},
-            {SBP_Enums.MessageTypes.TRACKING_STATE, typeof(TrackingState)}
+            {SBP_Enums.MessageTypes.TRACKING_STATE, typeof(TrackingState)},
+            {SBP_Enums.MessageTypes.LOG, typeof(Log)}
         };
 
         #endregion
