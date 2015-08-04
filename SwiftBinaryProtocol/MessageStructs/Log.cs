@@ -7,11 +7,14 @@ namespace SwiftBinaryProtocol.MessageStructs
     {
         public enum LogLevel
         {            
-            DEBUG = 0,
-            INFO = 1,
-            WARN = 2,
+            UNKNOWN = -1,
+            ALERT = 1,
+            CRITICAL = 2,
             ERROR = 3,
-            UNKNOWN = -1
+            WARN = 4,
+            NOTICE = 5,
+            INFO = 6,
+            DEBUG = 7
         }
 
         private LogLevel _logLevel;
