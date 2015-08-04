@@ -54,7 +54,7 @@ namespace SwiftBinaryProtocol.MessageStructs
                 bytes.AddRange(BitConverter.GetBytes(_li));
                 bytes.Add(_lf);
                 bytes.Add(_cn0);
-                bytes.Add(_sid);
+                bytes.AddRange(BitConverter.GetBytes(_sid));
                 return bytes.ToArray();
             }
         }
