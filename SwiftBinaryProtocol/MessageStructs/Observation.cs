@@ -11,28 +11,28 @@ namespace SwiftBinaryProtocol.MessageStructs
 
         private byte _lf;
 
-        private byte _snr;
+        private byte _cn0;
 
         private ushort _lockCounter;
 
-        private byte _prn;
+        private uint _sid;
         
         private const double P_MULTIPLIER = 1e2;
 
-        private const float SNR_MULTIPLIER = 4f;
+        private const float CN0_MULTIPLIER = 4f;
 
         private const double LF_MULTIPLIER = (double)(1 << 8);
 
-        public Observation(double pseudoRange, double carrierPhase, float signalToNoiseRatio, ushort lockCounter, byte prn)
+        public Observation(double pseudoRange, double carrierPhase, float carrierToNoiseDensity, ushort lockCounter, uint sid)
         {
             _p = (uint)(pseudoRange * P_MULTIPLIER);
             double carrierWhole = Math.Floor(carrierPhase);
             double carrierFraction = (carrierPhase - carrierWhole);
             _li = (int)carrierWhole;
             _lf = (byte)(carrierFraction * LF_MULTIPLIER);
-            _snr = (byte)(signalToNoiseRatio * SNR_MULTIPLIER);
+            _cn0 = (byte)(carrierToNoiseDensity * CN0_MULTIPLIER);
             _lockCounter = lockCounter;
-            _prn = prn;
+            _sid = sid;
         }
 
         public Observation(byte[] data)
@@ -40,9 +40,9 @@ namespace SwiftBinaryProtocol.MessageStructs
             _p = BitConverter.ToUInt32(data, 0);
             _li = BitConverter.ToInt32(data, 4);
             _lf = data[8];
-            _snr = data[9];
+            _cn0 = data[9];
             _lockCounter = data[10];
-            _prn = data[12];
+            _sid = BitConverter.ToUInt32(data, 12);
         }
 
         public byte[] Data
@@ -53,8 +53,8 @@ namespace SwiftBinaryProtocol.MessageStructs
                 bytes.AddRange(BitConverter.GetBytes(_p));
                 bytes.AddRange(BitConverter.GetBytes(_li));
                 bytes.Add(_lf);
-                bytes.Add(_snr);
-                bytes.Add(_prn);
+                bytes.Add(_cn0);
+                bytes.Add(_sid);
                 return bytes.ToArray();
             }
         }
@@ -69,9 +69,9 @@ namespace SwiftBinaryProtocol.MessageStructs
             get { return (double)_li + ((double)_lf / LF_MULTIPLIER); }
         }
 
-        public float SNR
+        public float CN0
         {
-            get { return (float)_snr / SNR_MULTIPLIER; }
+            get { return (float)_cn0 / CN0_MULTIPLIER; }
         }
 
         public ushort LockCounter
@@ -79,9 +79,9 @@ namespace SwiftBinaryProtocol.MessageStructs
             get { return _lockCounter; }
         }
 
-        public byte PRN
+        public uint SID
         {
-            get { return _prn; }
+            get { return _sid; }
         }
     }
 }
