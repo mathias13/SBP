@@ -44,10 +44,10 @@ namespace SwiftBinaryProtocol.MessageStructs
             _count = (byte)((int)sequence & HEADER_SEQ_MASK);
 
             List<Observation> observations = new List<Observation>();
-            for(int i = 7; i < data.Length; i += 13)
+            for(int i = 7; i < data.Length; i += 16)
             {
-                byte[] observationBytes = new byte[13];
-                Array.Copy(data, i, observationBytes, 0, 13);
+                byte[] observationBytes = new byte[16];
+                Array.Copy(data, i, observationBytes, 0, 16);
                 observations.Add(new Observation(observationBytes));
             }
             _observations = observations.ToArray();
