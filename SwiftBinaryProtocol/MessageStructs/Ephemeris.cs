@@ -54,9 +54,13 @@ namespace SwiftBinaryProtocol.MessageStructs
 
         private byte _healthy;
 
-        private byte _prn;
+        private uint _sid;
 
         private byte _iode;
+
+        private ushort _iodc;
+
+        private uint _reserved;
 
         public Ephemeris(byte[] data)
         {
@@ -85,8 +89,10 @@ namespace SwiftBinaryProtocol.MessageStructs
             _toc_wn = BitConverter.ToUInt16(data, 170);
             _valid = data[172];
             _healthy = data[173];
-            _prn = data[174];
-            _iode = data[175];
+            _sid = BitConverter.ToUInt32(data, 174);
+            _iode = data[178];
+            _iodc = BitConverter.ToUInt16(data, 179);
+            _reserved = BitConverter.ToUInt32(data, 180);
         }
 
         public double GroupDelay
@@ -214,14 +220,19 @@ namespace SwiftBinaryProtocol.MessageStructs
             get { return _healthy; }
         }
 
-        public byte PRN
+        public uint SID
         {
-            get { return _prn; }
+            get { return _sid; }
         }
 
         public byte IODE
         {
             get { return _iode; }
+        }
+
+        public ushort IODC
+        {
+            get { return _iodc; }
         }
     }
 }
