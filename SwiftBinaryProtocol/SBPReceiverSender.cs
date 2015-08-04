@@ -120,7 +120,14 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.RESET_FILTERS, typeof(ResetFilters)},
             {SBP_Enums.MessageTypes.INIT_BASE, typeof(InitBase)},
             {SBP_Enums.MessageTypes.THREAD_STATE, typeof(SwiftBinaryProtocol.MessageStructs.ThreadState)},
-            {SBP_Enums.MessageTypes.UART_STATE, typeof(UARTState)}
+            {SBP_Enums.MessageTypes.UART_STATE, typeof(UARTState)},
+            {SBP_Enums.MessageTypes.ACQ_RESULT, typeof(AquisitionResult)},
+            {SBP_Enums.MessageTypes.EXT_EVENT, typeof(ExternalEvent)},
+            {SBP_Enums.MessageTypes.TWEET, typeof(Tweet)},
+            {SBP_Enums.MessageTypes.EPHEMERIS, typeof(Ephemeris)},
+            {SBP_Enums.MessageTypes.MASK_SATELLITE, typeof(MaskSattelite)},            
+            {SBP_Enums.MessageTypes.RESET, typeof(Reset)},
+            {SBP_Enums.MessageTypes.TRACKING_STATE, typeof(TrackingState)}
         };
 
         #endregion
