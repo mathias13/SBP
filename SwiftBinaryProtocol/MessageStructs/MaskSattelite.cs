@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace SwiftBinaryProtocol.MessageStructs
 {
@@ -6,12 +7,12 @@ namespace SwiftBinaryProtocol.MessageStructs
     {
         private SBP_Enums.SatteliteMask _mask;
 
-        private byte _prn;
+        private uint _sid;
 
-        public MaskSattelite(SBP_Enums.SatteliteMask mask, byte prn)
+        public MaskSattelite(SBP_Enums.SatteliteMask mask, uint sid)
         {
             _mask = mask;
-            _prn = prn;
+            _sid = sid;
         }
 
         public MaskSattelite(byte[] data)
@@ -21,14 +22,17 @@ namespace SwiftBinaryProtocol.MessageStructs
             if (Enum.IsDefined(typeof(SBP_Enums.SatteliteMask), (int)mask))
                 maskEnum = (SBP_Enums.SatteliteMask)(int)mask;
             _mask = maskEnum;
-            _prn = data[1];
+            _sid = BitConverter.ToUInt32(data, 1);
         }
 
         public byte[] Data
         {
             get
             {
-                return new byte[] { Convert.ToByte((int)_mask), _prn };
+                List<byte> bytes = new List<byte>();
+                bytes.Add(Convert.ToByte((int)_mask));
+                bytes.AddRange(BitConverter.GetBytes(_sid));
+                return bytes.ToArray();
             }
         }
 
@@ -37,9 +41,9 @@ namespace SwiftBinaryProtocol.MessageStructs
             get { return _mask; }
         }
 
-        public byte PRN
+        public uint SID
         {
-            get { return _prn; }
+            get { return _sid; }
         }
     }
 }
