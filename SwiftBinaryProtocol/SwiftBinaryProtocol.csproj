@@ -48,6 +48,7 @@
     <Compile Include="MessageStructs\BaselineECEF.cs" />
     <Compile Include="MessageStructs\BaselineHeading.cs" />
     <Compile Include="MessageStructs\BaselineNED.cs" />
+    <Compile Include="MessageStructs\BasePositionECEF.cs" />
     <Compile Include="MessageStructs\DilutionOfPrecision.cs" />
     <Compile Include="MessageStructs\Ephemeris.cs" />
     <Compile Include="MessageStructs\ExternalEvent.cs" />
@@ -64,7 +65,7 @@
     <Compile Include="MessageStructs\Observation.cs" />
     <Compile Include="MessageStructs\ObservationHeader.cs" />
     <Compile Include="MessageStructs\PosistionECEF.cs" />
-    <Compile Include="MessageStructs\BasePosition.cs" />
+    <Compile Include="MessageStructs\BasePositionLLH.cs" />
     <Compile Include="MessageStructs\PositionLLH.cs" />
     <Compile Include="MessageStructs\Print.cs" />
     <Compile Include="MessageStructs\ThreadState.cs" />

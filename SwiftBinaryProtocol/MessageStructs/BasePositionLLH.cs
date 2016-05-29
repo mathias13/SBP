@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace SwiftBinaryProtocol.MessageStructs
 {
-    public struct BasePosition: IPayload
+    public struct BasePositionLLH: IPayload
     {
         private double _lat;
 
@@ -11,14 +11,14 @@ namespace SwiftBinaryProtocol.MessageStructs
 
         private double _height;
 
-        public BasePosition(double lat, double lon, double height)
+        public BasePositionLLH(double lat, double lon, double height)
         {
             _lat = lat;
             _lon = lon;
             _height = height;
         }
 
-        public BasePosition(byte[] data)
+        public BasePositionLLH(byte[] data)
         {
             _lat = BitConverter.ToDouble(data, 0);
             _lon = BitConverter.ToDouble(data, 8);

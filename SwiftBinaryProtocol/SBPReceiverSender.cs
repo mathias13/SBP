@@ -105,7 +105,9 @@ namespace SwiftBinaryProtocol
         {
             {SBP_Enums.MessageTypes.BASELINE_ECEF, typeof(BaselineECEF)},
             {SBP_Enums.MessageTypes.BASELINE_NED, typeof(BaselineNED)},
-            {SBP_Enums.MessageTypes.BASEPOS, typeof(BasePosition)},
+            {SBP_Enums.MessageTypes.BASELINE_HEADING, typeof(BaselineHeading)},
+            {SBP_Enums.MessageTypes.BASEPOS_LLH, typeof(BasePositionLLH)},
+            {SBP_Enums.MessageTypes.BASEPOS_ECEF, typeof(BasePositionECEF)},
             {SBP_Enums.MessageTypes.DOPS, typeof(DilutionOfPrecision)},
             {SBP_Enums.MessageTypes.GPSTIME, typeof(GPSTime)},
             {SBP_Enums.MessageTypes.HEARTBEAT, typeof(Heartbeat)},
