@@ -56,6 +56,10 @@ namespace SwiftBinaryProtocol.MessageStructs
 
         private uint _sid;
 
+        private byte _sidCode;
+
+        public byte _sidReserved;
+
         private byte _iode;
 
         private ushort _iodc;
@@ -90,6 +94,8 @@ namespace SwiftBinaryProtocol.MessageStructs
             _valid = data[172];
             _healthy = data[173];
             _sid = BitConverter.ToUInt32(data, 174);
+            _sidCode = data[176];
+            _sidReserved = data[177];
             _iode = data[178];
             _iodc = BitConverter.ToUInt16(data, 179);
             _reserved = BitConverter.ToUInt32(data, 180);
@@ -223,6 +229,11 @@ namespace SwiftBinaryProtocol.MessageStructs
         public uint SID
         {
             get { return _sid; }
+        }
+
+        public byte SIDCode
+        {
+            get { return _sidCode; }
         }
 
         public byte IODE
