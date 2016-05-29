@@ -9,12 +9,15 @@ namespace SwiftBinaryProtocol.MessageStructs
 
         private uint _sid;
 
+        private byte _sidCode;
+
         private float _cn0;
 
-        public TrackingChannel(SBP_Enums.TrackingState trackingState, uint sid, float cn0)
+        public TrackingChannel(SBP_Enums.TrackingState trackingState, uint sid, byte sidCode, float cn0)
         {
             _trackingState = trackingState;
             _sid = sid;
+            _sidCode = sidCode;
             _cn0 = cn0;
         }
 
@@ -26,6 +29,11 @@ namespace SwiftBinaryProtocol.MessageStructs
         public uint SID
         {
             get { return _sid; }
+        }
+
+        public byte SIDCode
+        {
+            get { return _sidCode; }
         }
 
         public float cn0
@@ -44,7 +52,7 @@ namespace SwiftBinaryProtocol.MessageStructs
             for(int i = 0; i < data.Length; i = i + 9)
             {
                 SBP_Enums.TrackingState trackingState = data[i] == 1 ? SBP_Enums.TrackingState.ENABLED : SBP_Enums.TrackingState.DISABLED;
-                trackingChannels.Add(new TrackingChannel(trackingState, BitConverter.ToUInt32(data, i + 1), BitConverter.ToSingle(data, i + 5)));
+                trackingChannels.Add(new TrackingChannel(trackingState, BitConverter.ToUInt32(data, i + 1), data[i + 3], BitConverter.ToSingle(data, i + 5)));
             }
             _trackingChannels = trackingChannels.ToArray();
         }
