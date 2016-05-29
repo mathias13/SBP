@@ -20,6 +20,12 @@ namespace SwiftBinaryProtocol.MessageStructs
 
         private SBP_Enums.FixMode _fixMode;
 
+        private bool _heightAboveMeanSeaLevel;
+
+        private bool _raimAvailable;
+
+        private bool _raimRepair;
+
         public PositionLLH(byte[] data)
         {
             _tow = BitConverter.ToUInt32(data, 0);
@@ -30,6 +36,9 @@ namespace SwiftBinaryProtocol.MessageStructs
             _v_accuracy = BitConverter.ToUInt16(data, 30);
             _n_sats = data[32];            
             _fixMode = (SBP_Enums.FixMode)(data[33] & 0x3);
+            _heightAboveMeanSeaLevel = (data[31] & 0x4) > 0;
+            _raimAvailable = (data[31] & 0x8) > 0;
+            _raimRepair = (data[31] & 0x10) > 0;
         }
 
         public uint TimeOfWeek
@@ -70,6 +79,21 @@ namespace SwiftBinaryProtocol.MessageStructs
         public SBP_Enums.FixMode FixMode
         {
             get { return _fixMode; }
+        }
+
+        public bool HeightAboveMeanSeaLevel
+        {
+            get { return _heightAboveMeanSeaLevel; }
+        }
+
+        public bool RaimAvailable
+        {
+            get { return _raimAvailable; }
+        }
+
+        public bool RaimRepair
+        {
+            get { return _raimRepair; }
         }
 
     }
