@@ -29,7 +29,8 @@ namespace SwiftBinaryProtocol
             BASELINE_NED = 0x0203,
             VEL_ECEF = 0x0204,
             VEL_NED = 0x0205,
-            DOPS = 0x0206,   
+            DOPS = 0x0206,
+            BASELINE_HEADING = 0x207,
             LOG = 0x0401,
             STARTUP = 0xFF00,
             HEARTBEAT = 0xFFFF            

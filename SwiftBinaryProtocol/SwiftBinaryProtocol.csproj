@@ -46,6 +46,7 @@
     <Compile Include="Eventarguments\SBPSendExceptionEventArgs.cs" />
     <Compile Include="MessageStructs\AquisitionResult.cs" />
     <Compile Include="MessageStructs\BaselineECEF.cs" />
+    <Compile Include="MessageStructs\BaselineHeading.cs" />
     <Compile Include="MessageStructs\BaselineNED.cs" />
     <Compile Include="MessageStructs\DilutionOfPrecision.cs" />
     <Compile Include="MessageStructs\Ephemeris.cs" />
