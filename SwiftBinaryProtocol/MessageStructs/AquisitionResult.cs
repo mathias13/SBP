@@ -10,14 +10,17 @@ namespace SwiftBinaryProtocol.MessageStructs
         
         private float _cf;
 
-        private byte _sid;
+        private ushort _sid;
+
+        private byte _sidCode;
 
         public AquisitionResult(byte[] data)
         {
             _snr = BitConverter.ToSingle(data, 0);
             _cp = BitConverter.ToSingle(data, 4);
             _cf = BitConverter.ToSingle(data, 8);
-            _sid = data[12];
+            _sid = BitConverter.ToUInt16(data, 12);
+            _sidCode = data[14];
         }
 
         public float SNR
@@ -35,9 +38,14 @@ namespace SwiftBinaryProtocol.MessageStructs
             get { return _cf; }
         }
 
-        public byte SignalIdentifier
+        public ushort SID
         {
             get { return _sid; }
+        }
+
+        public byte SIDCode
+        {
+            get { return _sidCode; }
         }
     }
 }
