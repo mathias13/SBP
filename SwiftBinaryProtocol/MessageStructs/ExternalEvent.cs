@@ -5,15 +5,18 @@ namespace SwiftBinaryProtocol.MessageStructs
     public struct ExternalEvent
     {
         private GPSTime _gpsTime;
+        
+        private bool _newLevel;
 
-        private byte _flags;
+        private bool _timeQualityGood;
 
         private byte _pin;
 
         public ExternalEvent(byte[] data)
         {
             _gpsTime = new GPSTime(data);
-            _flags = data[10];
+            _newLevel = (data[10] & 0x1) > 0;
+            _timeQualityGood = (data[10] & 0x2) > 0;
             _pin = data[11];
         }
         
@@ -21,10 +24,15 @@ namespace SwiftBinaryProtocol.MessageStructs
         {
             get { return _gpsTime; }
         }
-
-        public byte Flags
+        
+        public bool NewLevel
         {
-            get { return _flags; }
+            get { return _newLevel; }
+        }
+
+        public bool TimeQualityGood
+        {
+            get { return _timeQualityGood; }
         }
 
         public byte PinNumber
