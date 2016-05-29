@@ -12,7 +12,7 @@ namespace SwiftBinaryProtocol
             ACQ_RESULT = 0x0014,
             TRACKING_STATE = 0x0013,
             THREAD_STATE =  0x0017,
-            UART_STATE = 0x0018,
+            UART_STATE = 0x001D,
             IAR_STATE = 0x0019,
             MASK_SATELLITE = 0x001B,
             RESET_FILTERS = 0x0022,

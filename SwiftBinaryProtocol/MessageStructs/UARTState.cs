@@ -60,13 +60,21 @@ namespace SwiftBinaryProtocol.MessageStructs
 
     public struct UARTState
     {
-        private int _avg;
+        private int _latencyAvg;
 
-        private int _min;
+        private int _latencyMin;
 
-        private int _max;
+        private int _latencyMax;
 
-        private int _current;
+        private int _latencyCurrent;
+
+        private int _periodAvg;
+
+        private int _periodMin;
+
+        private int _periodMax;
+
+        private int _periodCurrent;
 
         private UARTPort[] _uartPort;
 
@@ -81,30 +89,54 @@ namespace SwiftBinaryProtocol.MessageStructs
             Array.Copy(data, 28, portData, 0, 14);
             _uartPort[2] = new UARTPort(portData);
 
-            _avg = BitConverter.ToInt32(data, 42);
-            _min = BitConverter.ToInt32(data, 46);
-            _max = BitConverter.ToInt32(data, 50);
-            _current = BitConverter.ToInt32(data, 54);
+            _latencyAvg = BitConverter.ToInt32(data, 42);
+            _latencyMin = BitConverter.ToInt32(data, 46);
+            _latencyMax = BitConverter.ToInt32(data, 50);
+            _latencyCurrent = BitConverter.ToInt32(data, 54);
+            _periodAvg = BitConverter.ToInt32(data, 58);
+            _periodMin = BitConverter.ToInt32(data, 62);
+            _periodMax = BitConverter.ToInt32(data, 66);
+            _periodCurrent = BitConverter.ToInt32(data, 70);
         }
 
-        public int Average
+        public int LatencyAverage
         {
-            get { return _avg; }
+            get { return _latencyAvg; }
         }
 
-        public int Min
+        public int LatencyMin
         {
-            get { return _min; }
+            get { return _latencyMin; }
         }
 
-        public int Max
+        public int LatencyMax
         {
-            get { return _max; }
+            get { return _latencyMax; }
         }
 
-        public int Current
+        public int LatencyCurrent
         {
-            get { return _current; }
+            get { return _latencyCurrent; }
+        }
+
+        public int PeriodAverage
+        {
+            get { return _periodAvg; }
+        }
+
+        public int PeriodMin
+        {
+            get { return _periodMin; }
+        }
+
+        public int PeriodMax
+        {
+            get { return _periodMax; }
+        }
+
+        public int PeriodCurrent
+        {
+            get { return _periodCurrent; }
         }
 
         public UARTPort UARTA
