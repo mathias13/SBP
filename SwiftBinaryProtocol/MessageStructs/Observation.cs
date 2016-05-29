@@ -1,48 +1,56 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace SwiftBinaryProtocol.MessageStructs
 {
-    public struct Observation: IPayload
+    public struct Observation : IPayload
     {
-        private uint _p;
+        private uint _tow;
 
-        private int _li;
+        private ushort _wn;
 
-        private byte _lf;
+        private byte _total;
 
-        private byte _cn0;
+        private byte _count;
 
-        private ushort _lockCounter;
+        private ObservationItem[] _observationItem;
 
-        private uint _sid;
-        
-        private const double P_MULTIPLIER = 1e2;
+        private const double TOW_MULTIPLIER = 1000.0;
 
-        private const float CN0_MULTIPLIER = 4f;
+        private const int HEADER_SEQ_SHIFT = 4;
 
-        private const double LF_MULTIPLIER = (double)(1 << 8);
+        private const int HEADER_SEQ_MASK = ((1 << 4) - 1);
 
-        public Observation(double pseudoRange, double carrierPhase, float carrierToNoiseDensity, ushort lockCounter, uint sid)
+        public const int MAX_OBSERVATIONS = HEADER_SEQ_MASK;
+
+        public Observation(double tow, ushort wn, byte total, byte count, ObservationItem[] observation)
         {
-            _p = (uint)(pseudoRange * P_MULTIPLIER);
-            double carrierWhole = Math.Floor(carrierPhase);
-            double carrierFraction = (carrierPhase - carrierWhole);
-            _li = (int)carrierWhole;
-            _lf = (byte)(carrierFraction * LF_MULTIPLIER);
-            _cn0 = (byte)(carrierToNoiseDensity * CN0_MULTIPLIER);
-            _lockCounter = lockCounter;
-            _sid = sid;
+            _tow = (uint)(tow * TOW_MULTIPLIER);
+            _wn = wn;
+            _total = total;
+            _count = count;
+            _observationItem = observation;
         }
 
         public Observation(byte[] data)
         {
-            _p = BitConverter.ToUInt32(data, 0);
-            _li = BitConverter.ToInt32(data, 4);
-            _lf = data[8];
-            _cn0 = data[9];
-            _lockCounter = data[10];
-            _sid = BitConverter.ToUInt32(data, 12);
+            _tow = BitConverter.ToUInt32(data, 0);
+            _wn = BitConverter.ToUInt16(data, 4);
+            byte sequence = data[6];
+            _total = (byte)((int)sequence >> HEADER_SEQ_SHIFT);
+            _count = (byte)((int)sequence & HEADER_SEQ_MASK);
+
+            List<ObservationItem> observations = new List<ObservationItem>();
+            for(int i = 7; i < data.Length; i += 16)
+            {
+                byte[] observationBytes = new byte[16];
+                Array.Copy(data, i, observationBytes, 0, 16);
+                observations.Add(new ObservationItem(observationBytes));
+            }
+            _observationItem = observations.ToArray();
         }
 
         public byte[] Data
@@ -50,38 +58,51 @@ namespace SwiftBinaryProtocol.MessageStructs
             get
             {
                 List<byte> bytes = new List<byte>();
-                bytes.AddRange(BitConverter.GetBytes(_p));
-                bytes.AddRange(BitConverter.GetBytes(_li));
-                bytes.Add(_lf);
-                bytes.Add(_cn0);
-                bytes.AddRange(BitConverter.GetBytes(_sid));
+                bytes.AddRange(BitConverter.GetBytes(_tow));
+                bytes.AddRange(BitConverter.GetBytes(_wn));
+                byte sequence = (byte)((int)_total << HEADER_SEQ_SHIFT | (int)_count & HEADER_SEQ_MASK);
+                bytes.Add(sequence);
+                foreach (ObservationItem observation in _observationItem)
+                    bytes.AddRange(observation.Data);
+
                 return bytes.ToArray();
             }
         }
 
-        public double P
+        public double TimeOfWeek
         {
-            get { return (double)_p / P_MULTIPLIER; }
+            get { return (double)_tow / TOW_MULTIPLIER; }
         }
 
-        public double L
+        public ushort WeekNumber
         {
-            get { return (double)_li + ((double)_lf / LF_MULTIPLIER); }
+            get { return _wn; }
+        }
+    
+        public byte Total
+        {
+            get { return _total; }
         }
 
-        public float CN0
+        public byte Count
         {
-            get { return (float)_cn0 / CN0_MULTIPLIER; }
+            get { return _count; }
         }
 
-        public ushort LockCounter
+        public ObservationItem[] Observations
         {
-            get { return _lockCounter; }
+            get { return _observationItem; }
         }
-
-        public uint SID
+        
+        public DateTime GPSDateTime
         {
-            get { return _sid; }
-        }
+            get
+            {
+                DateTime datum = new DateTime(1980, 1, 6, 0, 0, 0);
+                datum = datum.AddDays((double)_wn * 7);
+                datum = datum.AddSeconds(TimeOfWeek);
+                return datum;
+            }
+        }    
     }
 }

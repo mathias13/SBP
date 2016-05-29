@@ -62,8 +62,8 @@
     <Compile Include="MessageStructs\Heartbeat.cs" />
     <Compile Include="MessageStructs\IARState.cs" />
     <Compile Include="MessageStructs\IPayload.cs" />
+    <Compile Include="MessageStructs\ObservationItem.cs" />
     <Compile Include="MessageStructs\Observation.cs" />
-    <Compile Include="MessageStructs\ObservationHeader.cs" />
     <Compile Include="MessageStructs\PosistionECEF.cs" />
     <Compile Include="MessageStructs\BasePositionLLH.cs" />
     <Compile Include="MessageStructs\PositionLLH.cs" />
