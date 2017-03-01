@@ -22,8 +22,8 @@ namespace SwiftBinaryProtocol
             OBSERVATION = 0x0049,
             EPHEMERIS = 0x0080,
             RESET = 0x00B2,
-            GPSTIME = 0x0102,
             EXT_EVENT = 0x0101,
+            GPSTIME = 0x0102,
             POS_ECEF = 0x0209,
             POS_LLH = 0x020A,
             BASELINE_ECEF = 0x020B,
@@ -45,9 +45,11 @@ namespace SwiftBinaryProtocol
 
         public enum FixMode
         {
-            SinglePointPosition = 0,
-            Fixed_RTK = 1,
-            Float_RTK = 2
+            Invalid = 0,
+            SinglePointPosition = 1,
+            DifferentialGNSS = 2,
+            Float_RTK = 3,
+            Fixed_RTK = 4
         }
 
         public enum SatteliteMask
