@@ -37,6 +37,12 @@ namespace SwiftBinaryProtocol
             HEARTBEAT = 0xFFFF            
         }
 
+        public enum TimeSource
+        {
+            NONE = 0,
+            GNSSSolution = 1
+        }
+
         public enum FixMode
         {
             SinglePointPosition = 0,
