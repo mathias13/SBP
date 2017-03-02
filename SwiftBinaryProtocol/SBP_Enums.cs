@@ -37,6 +37,20 @@ namespace SwiftBinaryProtocol
             HEARTBEAT = 0xFFFF            
         }
 
+        public enum StartupCause
+        {
+            PowerOn = 0,
+            SoftwareReset = 1,
+            WatchdogReset = 2
+        }
+
+        public enum StartupType
+        {
+            ColdStart = 0,
+            WarmStart = 1,
+            HotStart = 2
+        }
+
         public enum TimeSource
         {
             NONE = 0,
