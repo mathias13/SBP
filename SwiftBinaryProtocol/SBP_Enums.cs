@@ -52,6 +52,13 @@ namespace SwiftBinaryProtocol
             Fixed_RTK = 4
         }
 
+        public enum VelocityMode
+        {
+            Invalid = 0,
+            MeasuredDopplerDerived = 1,
+            ComputedDopplerDerived = 2
+        }
+
         public enum SatteliteMask
         {
             MASK_ACQUISITION = 1,
