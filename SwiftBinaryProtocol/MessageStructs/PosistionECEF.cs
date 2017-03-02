@@ -18,9 +18,7 @@ namespace SwiftBinaryProtocol.MessageStructs
         private byte _n_sats;
 
         private SBP_Enums.FixMode _fixMode;
-
-        private bool _raimAvailable;
-
+        
         private bool _raimRepair;
 
         public PosistionECEF(byte[] data)
@@ -31,9 +29,8 @@ namespace SwiftBinaryProtocol.MessageStructs
             _z = BitConverter.ToDouble(data, 20);
             _accuracy = BitConverter.ToUInt16(data, 28);
             _n_sats = data[30];
-            _fixMode = (SBP_Enums.FixMode)(data[31] & 0x3);
-            _raimAvailable = (data[31] & 0x4) > 0;
-            _raimRepair = (data[31] & 0x8) > 0;
+            _fixMode = (SBP_Enums.FixMode)(data[31] & 0x7);
+            _raimRepair = (data[31] & 0x80) > 0;
         }
 
         public uint TimeOfWeek
@@ -69,11 +66,6 @@ namespace SwiftBinaryProtocol.MessageStructs
         public SBP_Enums.FixMode FixMode
         {
             get { return _fixMode; }
-        }
-
-        public bool RaimAvailable
-        {
-            get { return _raimAvailable; }
         }
         
         public bool RaimRepair
