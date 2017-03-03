@@ -48,8 +48,8 @@ namespace SwiftBinaryProtocol.MessageStructs
             List<ObservationItem> observations = new List<ObservationItem>();
             for(int i = 11; i < data.Length; i += 17)
             {
-                byte[] observationBytes = new byte[16];
-                Array.Copy(data, i, observationBytes, 0, 16);
+                byte[] observationBytes = new byte[17];
+                Array.Copy(data, i, observationBytes, 0, 17);
                 observations.Add(new ObservationItem(observationBytes));
             }
             _observationItem = observations.ToArray();
