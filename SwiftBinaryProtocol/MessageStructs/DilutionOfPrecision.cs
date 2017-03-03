@@ -28,8 +28,8 @@ namespace SwiftBinaryProtocol.MessageStructs
             _tdop = BitConverter.ToUInt16(data, 8);
             _hdop = BitConverter.ToUInt16(data, 10);
             _vdop = BitConverter.ToUInt16(data, 12);
-            _fixMode = (SBP_Enums.FixMode)(data[13] & 0x3);
-            _raimRepair = (data[13] & 0x80) > 0;
+            _fixMode = (SBP_Enums.FixMode)(data[14] & 0x3);
+            _raimRepair = (data[14] & 0x80) > 0;
         }
 
         public uint TimeOfWeek
