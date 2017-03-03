@@ -5,6 +5,8 @@ using SwiftBinaryProtocol.Win32;
 using System.Threading;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Net;
+using System.Net.Sockets;
 
 namespace SwiftBinaryProtocol
 {
@@ -40,6 +42,10 @@ namespace SwiftBinaryProtocol
 
         private int _baudRate = 19200;
 
+        private IPAddress _ipAdress = IPAddress.Any;
+
+        private int _tcpPort = 55555;
+
         protected Queue<byte> _receivedBytes;
                 
         public const byte PREAMBLE = 0x55;
@@ -63,7 +69,19 @@ namespace SwiftBinaryProtocol
             _comPort = comPort;
             _baudRate = baudrate;
 
-            _receiveSendThread = new Thread(new ThreadStart(ReceiveSendThread));
+            _receiveSendThread = new Thread(new ThreadStart(ReceiveSendThreadSerial));
+            _receiveSendThread.Start();
+
+            _invokeThread = new Thread(new ThreadStart(InvokeThread));
+            _invokeThread.Start();
+        }
+
+        public SBPReceiverSenderBase(IPAddress ipAdress, int tcpPort)
+        {
+            _ipAdress = ipAdress;
+            _tcpPort = tcpPort;
+
+            _receiveSendThread = new Thread(new ThreadStart(ReceiveSendThreadTCP));
             _receiveSendThread.Start();
 
             _invokeThread = new Thread(new ThreadStart(InvokeThread));
@@ -74,7 +92,7 @@ namespace SwiftBinaryProtocol
 
         #region Protected Methods
 
-        private void ReceiveSendThread()
+        private void ReceiveSendThreadSerial()
         {
             byte[] buffer = new byte[256];
             bool restart = false;
@@ -173,6 +191,65 @@ namespace SwiftBinaryProtocol
             }
             Win32Com.CancelIo(portHandle);
             Win32Com.CloseHandle(portHandle);
+        }
+
+        private void ReceiveSendThreadTCP()
+        {
+            TcpClient tcpClient = null;
+            DateTime sendTimeout = DateTime.MinValue;
+            bool restart = false;
+            _receivedBytes = new Queue<byte>();
+
+            while (!_receiveSendThreadStopped)
+            {
+                try
+                {
+                    if (tcpClient == null)
+                    {
+                        tcpClient = new TcpClient();
+                        tcpClient.Connect(_ipAdress, _tcpPort);
+                    }
+                    
+                    if (_sendMessageQueue.Count > 0 && sendTimeout < DateTime.Now)
+                    {
+                        byte[] messageToSend;
+                        lock (_syncobject)
+                            messageToSend = _sendMessageQueue.Dequeue();
+                        
+                        tcpClient.GetStream().Write(messageToSend, 0, messageToSend.Length);
+
+                        sendTimeout = DateTime.Now.AddMilliseconds((double)SEND_TIMEOUT_MS);
+                    }
+                    byte[] receivedBytes = new byte[tcpClient.Available];
+                    int bytesRead = tcpClient.GetStream().Read(receivedBytes, 0, receivedBytes.Length);
+
+                    if (bytesRead > 0)
+                    {
+                        lock (_syncobject)
+                            foreach (byte Byte in receivedBytes)
+                                _receivedBytes.Enqueue(Byte);
+                    }
+                    else
+                        Thread.Sleep(1);
+
+                    ProcessReading(restart);
+
+                    restart = false;
+                }
+                catch (Exception e)
+                {
+                    tcpClient.Close();
+                    tcpClient = null;
+                    _receivedBytes.Clear();
+                    restart = true;
+                    lock (_syncobject)
+                        _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(e));
+
+                    Thread.Sleep(5000);
+                }
+            }
+            tcpClient.Close();
+            tcpClient = null;
         }
 
         protected virtual void ProcessReading(bool restart)
