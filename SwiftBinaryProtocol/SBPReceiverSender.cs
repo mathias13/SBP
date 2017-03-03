@@ -2,6 +2,7 @@
 using SwiftBinaryProtocol.MessageStructs;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -138,12 +139,16 @@ namespace SwiftBinaryProtocol
         #region Events
 
         public event EventHandler<SBPMessageEventArgs> ReceivedMessageEvent;
-        
+
         #endregion
 
         #region ctor
 
-        public SBPReceiverSender(string comPort, int baudrate):base(comPort, baudrate)
+        public SBPReceiverSender(string comPort, int baudrate) : base(comPort, baudrate)
+        {
+        }
+
+        public SBPReceiverSender(IPAddress ipAdress, int tcpPort) : base(ipAdress, tcpPort)
         {
         }
 
