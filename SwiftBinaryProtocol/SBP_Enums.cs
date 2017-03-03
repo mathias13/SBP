@@ -19,7 +19,7 @@ namespace SwiftBinaryProtocol
             INIT_BASE = 0x0023,
             BASEPOS_LLH = 0x0044,
             BASEPOS_ECEF = 0x0048,
-            OBSERVATION = 0x0049,
+            OBSERVATION = 0x004A,
             EPHEMERIS = 0x0080,
             RESET = 0x00B2,
             EXT_EVENT = 0x0101,
@@ -71,6 +71,17 @@ namespace SwiftBinaryProtocol
             Invalid = 0,
             MeasuredDopplerDerived = 1,
             ComputedDopplerDerived = 2
+        }
+
+        public enum SIDCode
+        {
+            GPS_L1CA = 0,
+            GPS_L2CM = 1,
+            SBAS_L1CA = 2,
+            GLO_L1CA = 3,
+            GLO_L2CA = 4,
+            GPS_L1P = 5,
+            GPS_L2P = 6
         }
 
         public enum SatteliteMask
