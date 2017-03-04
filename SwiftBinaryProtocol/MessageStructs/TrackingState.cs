@@ -52,7 +52,7 @@ namespace SwiftBinaryProtocol.MessageStructs
             for(int i = 0; i < data.Length; i = i + 9)
             {
                 SBP_Enums.TrackingState trackingState = data[i] == 1 ? SBP_Enums.TrackingState.ENABLED : SBP_Enums.TrackingState.DISABLED;
-                trackingChannels.Add(new TrackingChannel(trackingState, BitConverter.ToUInt32(data, i + 1), (SBP_Enums.SIDCode)data[i + 3], BitConverter.ToSingle(data, i + 5)));
+                trackingChannels.Add(new TrackingChannel(trackingState, BitConverter.ToUInt16(data, i + 1), (SBP_Enums.SIDCode)data[i + 3], BitConverter.ToSingle(data, i + 5)));
             }
             _trackingChannels = trackingChannels.ToArray();
         }
