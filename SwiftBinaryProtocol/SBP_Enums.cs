@@ -21,7 +21,7 @@ namespace SwiftBinaryProtocol
             BASEPOS_ECEF = 0x0048,
             OBSERVATION = 0x004A,
             EPHEMERIS = 0x0080,
-            RESET = 0x00B2,
+            RESET = 0x00B6,
             EXT_EVENT = 0x0101,
             GPSTIME = 0x0102,
             DOPS = 0x0208,
