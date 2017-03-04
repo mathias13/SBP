@@ -7,8 +7,6 @@ namespace SwiftBinaryProtocol
         public enum MessageTypes
         {
             Unknown = 0x0000,
-            PRINT = 0x0010,
-            TWEET = 0x0012,
             ACQ_RESULT = 0x0014,
             TRACKING_STATE = 0x0013,
             THREAD_STATE =  0x0017,
