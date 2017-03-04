@@ -111,6 +111,7 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.BASEPOS_ECEF, typeof(BasePositionECEF)},
             {SBP_Enums.MessageTypes.DOPS, typeof(DilutionOfPrecision)},
             {SBP_Enums.MessageTypes.GPSTIME, typeof(GPSTime)},
+            {SBP_Enums.MessageTypes.UTCTIME, typeof(UTCTime)},
             {SBP_Enums.MessageTypes.HEARTBEAT, typeof(Heartbeat)},
             {SBP_Enums.MessageTypes.IAR_STATE, typeof(IARState)},
             {SBP_Enums.MessageTypes.OBSERVATION, typeof(Observation)},

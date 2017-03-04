@@ -22,6 +22,7 @@ namespace SwiftBinaryProtocol
             RESET = 0x00B6,
             EXT_EVENT = 0x0101,
             GPSTIME = 0x0102,
+            UTCTIME = 0x0103,
             DOPS = 0x0208,
             POS_ECEF = 0x0209,
             POS_LLH = 0x020A,
