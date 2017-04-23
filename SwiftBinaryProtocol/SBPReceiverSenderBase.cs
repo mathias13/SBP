@@ -144,7 +144,7 @@ namespace SwiftBinaryProtocol
                     if (!Win32Com.GetHandleInformation(portHandle, out lpdwFlags))
                         throw new Exception(String.Format("Port {0} went offline", _comPort));
 
-                    if (_sendMessageQueue.Count > 0 && sendTimeout < DateTime.Now)
+                    if (_sendMessageQueue.Count > 0)
                     {
                         byte[] messageToSend;
                         lock (_syncobject)
@@ -154,8 +154,10 @@ namespace SwiftBinaryProtocol
                         if (!Win32Com.WriteFile(portHandle, messageToSend, (uint)messageToSend.Length, out bytesWritten, IntPtr.Zero))
                             lock (_syncobject)
                                 _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
-
-                        sendTimeout = DateTime.Now.AddMilliseconds((double)SEND_TIMEOUT_MS);
+                        
+                        if(bytesWritten != messageToSend.Length)
+                            lock(_syncobject)
+                                _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write all bytes to port {0}", _comPort))));
                     }
                     uint bytesRead = 0;
                     if (!Win32Com.ReadFile(portHandle, buffer, (uint)buffer.Length, out bytesRead, IntPtr.Zero))
@@ -238,8 +240,11 @@ namespace SwiftBinaryProtocol
                 }
                 catch (Exception e)
                 {
-                    tcpClient.Close();
-                    tcpClient = null;
+                    if (tcpClient != null)
+                    {
+                        tcpClient.Close();
+                        tcpClient = null;
+                    }
                     _receivedBytes.Clear();
                     restart = true;
                     lock (_syncobject)
@@ -248,8 +253,11 @@ namespace SwiftBinaryProtocol
                     Thread.Sleep(5000);
                 }
             }
-            tcpClient.Close();
-            tcpClient = null;
+            if (tcpClient != null)
+            {
+                tcpClient.Close();
+                tcpClient = null;
+            }
         }
 
         protected virtual void ProcessReading(bool restart)
