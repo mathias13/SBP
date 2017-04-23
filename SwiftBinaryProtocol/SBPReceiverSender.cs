@@ -197,8 +197,7 @@ namespace SwiftBinaryProtocol
                                 if(MESSAGE_STRUCTS.ContainsKey(messageTypeEnum))
                                 {
                                     object messageData = Activator.CreateInstance(MESSAGE_STRUCTS[messageTypeEnum], _message.Payload.ToArray());
-                                    lock (_syncobject)
-                                        _messageQueue.Enqueue(new SBPMessageEventArgs((int)_message.SenderID.Value, messageTypeEnum, messageData));
+                                    _messageQueue.Enqueue(new SBPMessageEventArgs((int)_message.SenderID.Value, messageTypeEnum, messageData));
                                 }
                             }
                             else
@@ -209,7 +208,6 @@ namespace SwiftBinaryProtocol
 
                             _message = new SBPReceiveMessage();
                             _preambleFound = false;
-                            break;
                         }
                     }
                     else
