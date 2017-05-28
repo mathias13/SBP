@@ -42,6 +42,8 @@ namespace SwiftBinaryProtocol
 
         private int _baudRate = 19200;
 
+        private bool _rtsCts = false;
+
         private IPAddress _ipAdress = IPAddress.Any;
 
         private int _tcpPort = 55555;
@@ -66,10 +68,11 @@ namespace SwiftBinaryProtocol
 
         #region ctor
 
-        public SBPReceiverSenderBase(string comPort, int baudrate)
+        public SBPReceiverSenderBase(string comPort, int baudrate, bool rtsCts)
         {
             _comPort = comPort;
             _baudRate = baudrate;
+            _rtsCts = rtsCts;
 
             _receiveSendThread = new Thread(new ThreadStart(ReceiveSendThreadSerial));
             _receiveSendThread.Start();
@@ -140,8 +143,9 @@ namespace SwiftBinaryProtocol
                             throw new Exception(String.Format("Failed to set comm settings for port {0}", _comPort));
                         if (!Win32Com.SetCommTimeouts(portHandle, ref commTimeouts))
                             throw new Exception(String.Format("Failed to set comm timeouts for port {0}", _comPort));
-                        if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.CLRRTS))
-                            throw new Exception(String.Format("Failed to reset RTS pin{0}", _comPort));
+                        if(_rtsCts)
+                            if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.CLRRTS))
+                                throw new Exception(String.Format("Failed to reset RTS pin{0}", _comPort));
                     }
 
                     uint lpdwFlags = 0;
@@ -154,7 +158,7 @@ namespace SwiftBinaryProtocol
 
                     if(sendBuffer.Length > 0)
                     {
-                        if (!rtsActive)
+                        if (!rtsActive && _rtsCts)
                         {
                             if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.SETRTS))
                                 lock (_syncobject)
@@ -164,10 +168,11 @@ namespace SwiftBinaryProtocol
                             rtsActive = true;
                         }
                         uint lpmodemstat = 0;
-                        if (!Win32Com.GetCommModemStatus(portHandle, out lpmodemstat))
-                            _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to get RTS pin{0}", _comPort))));
+                        if(_rtsCts)
+                            if (!Win32Com.GetCommModemStatus(portHandle, out lpmodemstat))
+                                _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to get RTS pin{0}", _comPort))));
 
-                        if ((lpmodemstat & Win32Com.MS_CTS_ON) > 0)
+                        if ((lpmodemstat & Win32Com.MS_CTS_ON) > 0 || !_rtsCts)
                         {
                             uint bytesWritten = 0;
                             if (!Win32Com.WriteFile(portHandle, sendBuffer, (uint)sendBuffer.Length, out bytesWritten, IntPtr.Zero))
@@ -180,9 +185,10 @@ namespace SwiftBinaryProtocol
 
                             if (bytesWritten == sendBuffer.Length || DateTime.Now > sendTimeout)
                             {
-                                if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.CLRRTS))
-                                    lock (_syncobject)
-                                        _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to reset RTS pin{0}", _comPort))));
+                                if (_rtsCts)
+                                    if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.CLRRTS))
+                                        lock (_syncobject)
+                                            _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to reset RTS pin{0}", _comPort))));
                                 rtsActive = false;
                                 sendBuffer = new byte[0];
                             }
