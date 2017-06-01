@@ -37,7 +37,7 @@ namespace SwiftBinaryProtocol
             HEARTBEAT = 0xFFFF            
         }
 
-        public enum FixMode
+        public enum FixMode_Dep
         {
             SinglePointPosition = 0,
             Fixed_RTK = 1,
