@@ -1,6 +1,7 @@
 ﻿using SwiftBinaryProtocol.Eventarguments;
 using SwiftBinaryProtocol.MessageStructs;
 using System;
+using System.Net;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -21,14 +22,18 @@ namespace SwiftBinaryProtocol
         #region Events
 
         public event EventHandler<SBPRawMessageEventArgs> ReceivedRawMessageEvent;
-    
+
         #endregion
 
         #region ctor
 
-        public SBPRawReceiverSender(string comport, int baudrate)
-            : base(comport, baudrate)
-        { }
+        public SBPRawReceiverSender(string comport, int baudrate) : base(comport, baudrate)
+        {
+        }
+
+        public SBPRawReceiverSender(IPAddress ipAdress, int tcpPort) : base(ipAdress, tcpPort)
+        {
+        }
 
         #endregion
 

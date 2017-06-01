@@ -2,6 +2,7 @@
 using SwiftBinaryProtocol.MessageStructs;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -103,19 +104,28 @@ namespace SwiftBinaryProtocol
 
         private readonly IDictionary<SBP_Enums.MessageTypes, Type> MESSAGE_STRUCTS = new Dictionary<SBP_Enums.MessageTypes, Type>()
         {
-            {SBP_Enums.MessageTypes.BASELINE_ECEF, typeof(BaselineECEF_Dep)},
-            {SBP_Enums.MessageTypes.BASELINE_NED, typeof(BaselineNED_Dep)},
-            {SBP_Enums.MessageTypes.BASELINE_HEADING, typeof(BaselineHeading_Dep)},
+            { SBP_Enums.MessageTypes.BASELINE_ECEF, typeof(BaselineECEF)},
+            {SBP_Enums.MessageTypes.BASELINE_NED, typeof(BaselineNED)},
+            {SBP_Enums.MessageTypes.BASELINE_HEADING, typeof(BaselineHeading)},
+            {SBP_Enums.MessageTypes.BASELINE_ECEF_DEP, typeof(BaselineECEF_Dep)},
+            {SBP_Enums.MessageTypes.BASELINE_NED_DEP, typeof(BaselineNED_Dep)},
+            {SBP_Enums.MessageTypes.BASELINE_HEADING_DEP, typeof(BaselineHeading_Dep)},
             {SBP_Enums.MessageTypes.BASEPOS_LLH, typeof(BasePositionLLH)},
             {SBP_Enums.MessageTypes.BASEPOS_ECEF, typeof(BasePositionECEF)},
-            {SBP_Enums.MessageTypes.DOPS, typeof(DilutionOfPrecision_Dep)},
-            {SBP_Enums.MessageTypes.GPSTIME, typeof(GPSTime_Dep)},
+            {SBP_Enums.MessageTypes.DOPS, typeof(DilutionOfPrecision)},
+            {SBP_Enums.MessageTypes.GPSTIME, typeof(GPSTime)},
+            {SBP_Enums.MessageTypes.UTCTIME, typeof(UTCTime)},
+            {SBP_Enums.MessageTypes.DOPS_DEP, typeof(DilutionOfPrecision_Dep)},
+            {SBP_Enums.MessageTypes.GPSTIME_DEP, typeof(GPSTime_Dep)},
             {SBP_Enums.MessageTypes.HEARTBEAT, typeof(Heartbeat)},
             {SBP_Enums.MessageTypes.IAR_STATE, typeof(IARState)},
-            {SBP_Enums.MessageTypes.OBSERVATION, typeof(Observation_Dep)},
-            {SBP_Enums.MessageTypes.POS_ECEF, typeof(PosistionECEF_Dep)},
-            {SBP_Enums.MessageTypes.POS_LLH, typeof(PositionLLH_Dep)},
+            {SBP_Enums.MessageTypes.OBSERVATION_DEP, typeof(Observation_Dep)},
+            {SBP_Enums.MessageTypes.POS_ECEF_DEP, typeof(PosistionECEF_Dep)},
+            {SBP_Enums.MessageTypes.POS_LLH_DEP, typeof(PositionLLH_Dep)},
             {SBP_Enums.MessageTypes.PRINT, typeof(Print)},
+            {SBP_Enums.MessageTypes.OBSERVATION, typeof(Observation)},
+            {SBP_Enums.MessageTypes.POS_ECEF, typeof(PosistionECEF)},
+            {SBP_Enums.MessageTypes.POS_LLH, typeof(PositionLLH)},
             {SBP_Enums.MessageTypes.STARTUP, typeof(Startup)},
             {SBP_Enums.MessageTypes.VEL_ECEF, typeof(VelocityECEF_Dep)},
             {SBP_Enums.MessageTypes.VEL_NED, typeof(VelocityNED_Dep)},
@@ -125,7 +135,6 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.UART_STATE, typeof(UARTState)},
             {SBP_Enums.MessageTypes.ACQ_RESULT, typeof(AquisitionResult)},
             {SBP_Enums.MessageTypes.EXT_EVENT, typeof(ExternalEvent)},
-            {SBP_Enums.MessageTypes.TWEET, typeof(Tweet)},
             {SBP_Enums.MessageTypes.EPHEMERIS, typeof(Ephemeris)},
             {SBP_Enums.MessageTypes.MASK_SATELLITE, typeof(MaskSattelite)},            
             {SBP_Enums.MessageTypes.RESET, typeof(Reset)},
@@ -143,7 +152,11 @@ namespace SwiftBinaryProtocol
 
         #region ctor
 
-        public SBPReceiverSender(string comPort, int baudrate):base(comPort, baudrate)
+        public SBPReceiverSender(string comPort, int baudrate) : base(comPort, baudrate)
+        {
+        }
+
+        public SBPReceiverSender(IPAddress ipAdress, int tcpPort) : base(ipAdress, tcpPort)
         {
         }
 
@@ -193,7 +206,6 @@ namespace SwiftBinaryProtocol
                                 if(MESSAGE_STRUCTS.ContainsKey(messageTypeEnum))
                                 {
                                     object messageData = Activator.CreateInstance(MESSAGE_STRUCTS[messageTypeEnum], _message.Payload.ToArray());
-                                    lock (_syncobject)
                                         _messageQueue.Enqueue(new SBPMessageEventArgs((int)_message.SenderID.Value, messageTypeEnum, messageData));
                                 }
                             }
@@ -205,7 +217,6 @@ namespace SwiftBinaryProtocol
 
                             _message = new SBPReceiveMessage();
                             _preambleFound = false;
-                            break;
                         }
                     }
                     else

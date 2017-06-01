@@ -16,6 +16,10 @@ namespace SwiftBinaryProtocol.MessageStructs
 
         private ushort _vdop;
 
+        private SBP_Enums.FixMode _fixMode;
+
+        private bool _raimRepair;
+
         public DilutionOfPrecision(byte[] data)
         {
             _tow = BitConverter.ToUInt32(data, 0);
@@ -24,6 +28,8 @@ namespace SwiftBinaryProtocol.MessageStructs
             _tdop = BitConverter.ToUInt16(data, 8);
             _hdop = BitConverter.ToUInt16(data, 10);
             _vdop = BitConverter.ToUInt16(data, 12);
+            _fixMode = (SBP_Enums.FixMode)(data[14] & 0x7);
+            _raimRepair = (data[14] & 0x80) > 0;
         }
 
         public uint TimeOfWeek
@@ -54,6 +60,16 @@ namespace SwiftBinaryProtocol.MessageStructs
         public ushort VerticalDOP
         {
             get { return _vdop; }
+        }
+
+        public SBP_Enums.FixMode FixMode
+        {
+            get { return _fixMode; }
+        }
+
+        public bool RaimRepair
+        {
+            get { return _raimRepair; }
         }
     }
 }

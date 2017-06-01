@@ -17,7 +17,9 @@ namespace SwiftBinaryProtocol.MessageStructs
         private ushort _v_accuracy;
 
         private byte _n_sats;
-        
+
+        private SBP_Enums.VelocityMode _velocityMode;
+
         public VelocityNED(byte[] data)
         {
             _tow = BitConverter.ToUInt32(data, 0);
@@ -27,6 +29,7 @@ namespace SwiftBinaryProtocol.MessageStructs
             _h_accuracy = BitConverter.ToUInt16(data, 16);
             _v_accuracy = BitConverter.ToUInt16(data, 18);
             _n_sats = data[20];
+            _velocityMode = (SBP_Enums.VelocityMode)(data[21] & 0x7);
         }
 
         public uint TimeOfWeek
@@ -62,6 +65,11 @@ namespace SwiftBinaryProtocol.MessageStructs
         public byte NumberOfSattelites
         {
             get { return _n_sats; }
+        }
+
+        public SBP_Enums.VelocityMode VelocityMode
+        {
+            get { return _velocityMode; }
         }
     }
 }

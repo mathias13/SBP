@@ -57,6 +57,7 @@
     <Compile Include="MessageStructs\Ephemeris_Dep.cs" />
     <Compile Include="MessageStructs\Ephemeris.cs" />
     <Compile Include="MessageStructs\ExternalEvent.cs" />
+    <Compile Include="MessageStructs\UTCTime.cs" />
     <Compile Include="MessageStructs\GPSTime_Dep.cs" />
     <Compile Include="MessageStructs\MaskSattelite.cs" />
     <Compile Include="MessageStructs\Log.cs" />
@@ -77,10 +78,8 @@
     <Compile Include="MessageStructs\PosistionECEF.cs" />
     <Compile Include="MessageStructs\BasePositionLLH.cs" />
     <Compile Include="MessageStructs\PositionLLH.cs" />
-    <Compile Include="MessageStructs\Print.cs" />
     <Compile Include="MessageStructs\ThreadState.cs" />
     <Compile Include="MessageStructs\TrackingState.cs" />
-    <Compile Include="MessageStructs\Tweet.cs" />
     <Compile Include="MessageStructs\UARTState.cs" />
     <Compile Include="MessageStructs\VelocityECEF_Dep.cs" />
     <Compile Include="MessageStructs\VelocityECEF.cs" />

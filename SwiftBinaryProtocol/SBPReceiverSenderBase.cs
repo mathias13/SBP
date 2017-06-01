@@ -5,6 +5,8 @@ using SwiftBinaryProtocol.Win32;
 using System.Threading;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Net;
+using System.Net.Sockets;
 
 namespace SwiftBinaryProtocol
 {
@@ -40,16 +42,24 @@ namespace SwiftBinaryProtocol
 
         private int _baudRate = 19200;
 
+        private bool _rtsCts = false;
+
+        private IPAddress _ipAdress = IPAddress.Any;
+
+        private int _tcpPort = 55555;
+
         protected Queue<byte> _receivedBytes;
                 
         public const byte PREAMBLE = 0x55;
 
         public const int SEND_TIMEOUT_MS = 5; //Prevents rx overrun in Piksi
 
+        public const int SEND_TIMEOUT_SERIAL_MS = 50; //Prevents rx overrun in Piksi
+
         #endregion
 
         #region Events
-        
+
         public event EventHandler<SBPSendExceptionEventArgs> SendExeceptionEvent;
 
         public event EventHandler<SBPReadExceptionEventArgs> ReadExceptionEvent;
@@ -58,12 +68,25 @@ namespace SwiftBinaryProtocol
 
         #region ctor
 
-        public SBPReceiverSenderBase(string comPort, int baudrate)
+        public SBPReceiverSenderBase(string comPort, int baudrate, bool rtsCts)
         {
             _comPort = comPort;
             _baudRate = baudrate;
+            _rtsCts = rtsCts;
 
-            _receiveSendThread = new Thread(new ThreadStart(ReceiveSendThread));
+            _receiveSendThread = new Thread(new ThreadStart(ReceiveSendThreadSerial));
+            _receiveSendThread.Start();
+
+            _invokeThread = new Thread(new ThreadStart(InvokeThread));
+            _invokeThread.Start();
+        }
+
+        public SBPReceiverSenderBase(IPAddress ipAdress, int tcpPort)
+        {
+            _ipAdress = ipAdress;
+            _tcpPort = tcpPort;
+
+            _receiveSendThread = new Thread(new ThreadStart(ReceiveSendThreadTCP));
             _receiveSendThread.Start();
 
             _invokeThread = new Thread(new ThreadStart(InvokeThread));
@@ -74,10 +97,12 @@ namespace SwiftBinaryProtocol
 
         #region Protected Methods
 
-        private void ReceiveSendThread()
+        private void ReceiveSendThreadSerial()
         {
-            byte[] buffer = new byte[256];
+            byte[] buffer = new byte[32];
             bool restart = false;
+            bool rtsActive = false;
+            byte[] sendBuffer = new byte[0];
             DateTime sendTimeout = DateTime.MinValue;
             IntPtr portHandle = IntPtr.Zero;
             Thread.Sleep(1000);
@@ -107,7 +132,7 @@ namespace SwiftBinaryProtocol
                         commTimeouts.WriteTotalTimeoutConstant = 0;
                         commTimeouts.WriteTotalTimeoutMultiplier = 0;
                         DCB dcb = new DCB();
-                        dcb.Init(false, true, true, 2, true, false, false, false, 2);
+                        dcb.Init(false, false, false, 0, false, false, false, false, 0);
                         dcb.BaudRate = _baudRate;
                         dcb.ByteSize = 8;
                         dcb.Parity = 0;
@@ -118,27 +143,58 @@ namespace SwiftBinaryProtocol
                             throw new Exception(String.Format("Failed to set comm settings for port {0}", _comPort));
                         if (!Win32Com.SetCommTimeouts(portHandle, ref commTimeouts))
                             throw new Exception(String.Format("Failed to set comm timeouts for port {0}", _comPort));
-
-
+                        if(_rtsCts)
+                            if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.CLRRTS))
+                                throw new Exception(String.Format("Failed to reset RTS pin{0}", _comPort));
                     }
 
                     uint lpdwFlags = 0;
                     if (!Win32Com.GetHandleInformation(portHandle, out lpdwFlags))
                         throw new Exception(String.Format("Port {0} went offline", _comPort));
 
-                    if (_sendMessageQueue.Count > 0 && sendTimeout < DateTime.Now)
-                    {
-                        byte[] messageToSend;
+                    if (_sendMessageQueue.Count > 0 && sendBuffer.Length == 0)
                         lock (_syncobject)
-                            messageToSend = _sendMessageQueue.Dequeue();
-                        
-                        uint bytesWritten = 0;
-                        if (!Win32Com.WriteFile(portHandle, messageToSend, (uint)messageToSend.Length, out bytesWritten, IntPtr.Zero))
-                            lock (_syncobject)
-                                _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
+                            sendBuffer = _sendMessageQueue.Dequeue();
 
-                        sendTimeout = DateTime.Now.AddMilliseconds((double)SEND_TIMEOUT_MS);
+                    if(sendBuffer.Length > 0)
+                    {
+                        if (!rtsActive && _rtsCts)
+                        {
+                            if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.SETRTS))
+                                lock (_syncobject)
+                                    _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to set RTS pin{0}", _comPort))));
+
+                            sendTimeout = DateTime.Now.Add(TimeSpan.FromMilliseconds(SEND_TIMEOUT_SERIAL_MS));
+                            rtsActive = true;
+                        }
+                        uint lpmodemstat = 0;
+                        if(_rtsCts)
+                            if (!Win32Com.GetCommModemStatus(portHandle, out lpmodemstat))
+                                _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to get RTS pin{0}", _comPort))));
+
+                        if ((lpmodemstat & Win32Com.MS_CTS_ON) > 0 || !_rtsCts)
+                        {
+                            uint bytesWritten = 0;
+                            if (!Win32Com.WriteFile(portHandle, sendBuffer, (uint)sendBuffer.Length, out bytesWritten, IntPtr.Zero))
+                                lock (_syncobject)
+                                    _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
+
+                            if (DateTime.Now > sendTimeout)
+                                lock (_syncobject)
+                                    _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write all bytes to port {0}", _comPort))));
+
+                            if (bytesWritten == sendBuffer.Length || DateTime.Now > sendTimeout)
+                            {
+                                if (_rtsCts)
+                                    if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.CLRRTS))
+                                        lock (_syncobject)
+                                            _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to reset RTS pin{0}", _comPort))));
+                                rtsActive = false;
+                                sendBuffer = new byte[0];
+                            }
+                        }
                     }
+                    
                     uint bytesRead = 0;
                     if (!Win32Com.ReadFile(portHandle, buffer, (uint)buffer.Length, out bytesRead, IntPtr.Zero))
                         throw new Exception(String.Format("Failed to read port {0}", _comPort));
@@ -151,7 +207,7 @@ namespace SwiftBinaryProtocol
                             foreach (byte Byte in bytes)
                                 _receivedBytes.Enqueue(Byte);
                     }
-                    else
+                    else if (sendBuffer.Length == 0)
                         Thread.Sleep(1);
 
                     ProcessReading(restart);
@@ -173,6 +229,71 @@ namespace SwiftBinaryProtocol
             }
             Win32Com.CancelIo(portHandle);
             Win32Com.CloseHandle(portHandle);
+        }
+
+        private void ReceiveSendThreadTCP()
+        {
+            TcpClient tcpClient = null;
+            DateTime sendTimeout = DateTime.MinValue;
+            bool restart = false;
+            _receivedBytes = new Queue<byte>();
+
+            while (!_receiveSendThreadStopped)
+            {
+                try
+                {
+                    if (tcpClient == null)
+                    {
+                        tcpClient = new TcpClient();
+                        tcpClient.Connect(_ipAdress, _tcpPort);
+                    }
+                    
+                    if (_sendMessageQueue.Count > 0 && sendTimeout < DateTime.Now)
+                    {
+                        byte[] messageToSend;
+                        lock (_syncobject)
+                            messageToSend = _sendMessageQueue.Dequeue();
+                        
+                        tcpClient.GetStream().Write(messageToSend, 0, messageToSend.Length);
+
+                        sendTimeout = DateTime.Now.AddMilliseconds((double)SEND_TIMEOUT_MS);
+                    }
+                    byte[] receivedBytes = new byte[tcpClient.Available];
+                    int bytesRead = tcpClient.GetStream().Read(receivedBytes, 0, receivedBytes.Length);
+
+                    if (bytesRead > 0)
+                    {
+                        lock (_syncobject)
+                            foreach (byte Byte in receivedBytes)
+                                _receivedBytes.Enqueue(Byte);
+                    }
+                    else
+                        Thread.Sleep(1);
+
+                    ProcessReading(restart);
+
+                    restart = false;
+                }
+                catch (Exception e)
+                {
+                    if (tcpClient != null)
+                    {
+                        tcpClient.Close();
+                        tcpClient = null;
+                    }
+                    _receivedBytes.Clear();
+                    restart = true;
+                    lock (_syncobject)
+                        _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(e));
+
+                    Thread.Sleep(5000);
+                }
+            }
+            if (tcpClient != null)
+            {
+                tcpClient.Close();
+                tcpClient = null;
+            }
         }
 
         protected virtual void ProcessReading(bool restart)
