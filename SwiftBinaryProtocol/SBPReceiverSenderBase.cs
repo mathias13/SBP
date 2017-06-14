@@ -114,7 +114,11 @@ namespace SwiftBinaryProtocol
                 {
                     if (portHandle == IntPtr.Zero)
                     {
-                        portHandle = Win32Com.CreateFile(_comPort, Win32Com.GENERIC_READ | Win32Com.GENERIC_WRITE, 0, IntPtr.Zero,
+                        int portnumber = Int32.Parse(_comPort.Replace("COM", String.Empty));
+                        string comPort = _comPort;
+                        if (portnumber > 9)
+                            comPort = String.Format("\\\\.\\{0}", _comPort);
+                        portHandle = Win32Com.CreateFile(comPort, Win32Com.GENERIC_READ | Win32Com.GENERIC_WRITE, 0, IntPtr.Zero,
                             Win32Com.OPEN_EXISTING, 0, IntPtr.Zero);
 
                         if (portHandle == (IntPtr)Win32Com.INVALID_HANDLE_VALUE)
@@ -158,11 +162,12 @@ namespace SwiftBinaryProtocol
 
                     if(sendBuffer.Length > 0)
                     {
-                        if (!rtsActive && _rtsCts)
+                        if (!rtsActive)
                         {
-                            if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.SETRTS))
-                                lock (_syncobject)
-                                    _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to set RTS pin{0}", _comPort))));
+                            if(_rtsCts)
+                                if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.SETRTS))
+                                    lock (_syncobject)
+                                        _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to set RTS pin{0}", _comPort))));
 
                             sendTimeout = DateTime.Now.Add(TimeSpan.FromMilliseconds(SEND_TIMEOUT_SERIAL_MS));
                             rtsActive = true;

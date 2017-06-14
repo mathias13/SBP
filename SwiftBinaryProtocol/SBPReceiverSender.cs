@@ -122,13 +122,14 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.OBSERVATION_DEP, typeof(Observation_Dep)},
             {SBP_Enums.MessageTypes.POS_ECEF_DEP, typeof(PosistionECEF_Dep)},
             {SBP_Enums.MessageTypes.POS_LLH_DEP, typeof(PositionLLH_Dep)},
-            {SBP_Enums.MessageTypes.PRINT, typeof(Print)},
             {SBP_Enums.MessageTypes.OBSERVATION, typeof(Observation)},
             {SBP_Enums.MessageTypes.POS_ECEF, typeof(PosistionECEF)},
             {SBP_Enums.MessageTypes.POS_LLH, typeof(PositionLLH)},
             {SBP_Enums.MessageTypes.STARTUP, typeof(Startup)},
-            {SBP_Enums.MessageTypes.VEL_ECEF, typeof(VelocityECEF_Dep)},
-            {SBP_Enums.MessageTypes.VEL_NED, typeof(VelocityNED_Dep)},
+            {SBP_Enums.MessageTypes.VEL_ECEF_DEP, typeof(VelocityECEF_Dep)},
+            {SBP_Enums.MessageTypes.VEL_NED_DEP, typeof(VelocityNED_Dep)},
+            {SBP_Enums.MessageTypes.VEL_ECEF, typeof(VelocityECEF)},
+            {SBP_Enums.MessageTypes.VEL_NED, typeof(VelocityNED)},
             {SBP_Enums.MessageTypes.RESET_FILTERS, typeof(ResetFilters)},
             {SBP_Enums.MessageTypes.INIT_BASE, typeof(InitBase)},
             {SBP_Enums.MessageTypes.THREAD_STATE, typeof(SwiftBinaryProtocol.MessageStructs.ThreadState)},
@@ -152,7 +153,7 @@ namespace SwiftBinaryProtocol
 
         #region ctor
 
-        public SBPReceiverSender(string comPort, int baudrate) : base(comPort, baudrate)
+        public SBPReceiverSender(string comPort, int baudrate, bool rtsCts) : base(comPort, baudrate, rtsCts)
         {
         }
 

@@ -27,7 +27,7 @@ namespace SwiftBinaryProtocol
 
         #region ctor
 
-        public SBPRawReceiverSender(string comport, int baudrate) : base(comport, baudrate)
+        public SBPRawReceiverSender(string comport, int baudrate, bool rtsCts) : base(comport, baudrate, rtsCts)
         {
         }
 
