@@ -15,7 +15,7 @@ namespace SwiftBinaryProtocol.MessageStructs
 
         private ushort _lockCounter;
 
-        private uint _sid;
+        private ushort _sid;
 
         private byte _sidCode;
         
@@ -25,7 +25,7 @@ namespace SwiftBinaryProtocol.MessageStructs
 
         private const double LF_MULTIPLIER = (double)(1 << 8);
 
-        public ObservationItem_Dep(double pseudoRange, double carrierPhase, float carrierToNoiseDensity, ushort lockCounter, uint sid, byte sidCode)
+        public ObservationItem_Dep(double pseudoRange, double carrierPhase, float carrierToNoiseDensity, ushort lockCounter, ushort sid, byte sidCode)
         {
             _p = (uint)(pseudoRange * P_MULTIPLIER);
             double carrierWhole = Math.Floor(carrierPhase);
@@ -45,7 +45,7 @@ namespace SwiftBinaryProtocol.MessageStructs
             _lf = data[8];
             _cn0 = data[9];
             _lockCounter = data[10];
-            _sid = BitConverter.ToUInt32(data, 12);
+            _sid = BitConverter.ToUInt16(data, 12);
             _sidCode = data[14];
         }
 
@@ -58,7 +58,10 @@ namespace SwiftBinaryProtocol.MessageStructs
                 bytes.AddRange(BitConverter.GetBytes(_li));
                 bytes.Add(_lf);
                 bytes.Add(_cn0);
+                bytes.AddRange(BitConverter.GetBytes(_lockCounter));
                 bytes.AddRange(BitConverter.GetBytes(_sid));
+                bytes.Add(_sidCode);
+                bytes.Add(0x0);
                 return bytes.ToArray();
             }
         }
@@ -83,7 +86,7 @@ namespace SwiftBinaryProtocol.MessageStructs
             get { return _lockCounter; }
         }
 
-        public uint SID
+        public ushort SID
         {
             get { return _sid; }
         }
