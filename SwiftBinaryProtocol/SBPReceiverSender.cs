@@ -142,7 +142,7 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.TRACKING_STATE, typeof(TrackingState)},
             {SBP_Enums.MessageTypes.LOG, typeof(Log)}
         };
-
+        
         #endregion
 
         #region Events
@@ -173,66 +173,82 @@ namespace SwiftBinaryProtocol
                 _message = new SBPReceiveMessage();
             }
 
-            lock (_syncobject)
+            if(!_preambleFound)
             {
-                //We need at least two bytes to read fields properly
-                while (_receivedBytes.Count > 1)
+                while (_receivedBytes.Count > 0)
                 {
-                    if (_preambleFound)
+                    if (_receivedBytes[0] == PREAMBLE)
                     {
-                        if (!_message.MessageType.HasValue)
-                        {
-                            byte[] messageTypeBytes = new byte[2] { _receivedBytes.Dequeue(), _receivedBytes.Dequeue() };
-                            _message.MessageType = BitConverter.ToUInt16(messageTypeBytes, 0);
-                        }
-                        else if (!_message.SenderID.HasValue)
-                        {
-                            byte[] senderBytes = new byte[2] { _receivedBytes.Dequeue(), _receivedBytes.Dequeue() };
-                            _message.SenderID = BitConverter.ToUInt16(senderBytes, 0);
-                        }
-                        else if (!_message.Length.HasValue)
-                            _message.Length = _receivedBytes.Dequeue();
-                        else if (_message.Payload.Count < _message.Length.Value)
-                            _message.Payload.Add(_receivedBytes.Dequeue());
-                        else
-                        {
-                            byte[] crcBytes = new byte[2] { _receivedBytes.Dequeue(), _receivedBytes.Dequeue() };
-                            _message.ReceicevedChecksum = BitConverter.ToUInt16(crcBytes, 0);
-                            if (_message.ValidateCheckSum())
-                            {
-                                SBP_Enums.MessageTypes messageTypeEnum = SBP_Enums.MessageTypes.Unknown;
-                                if (Enum.IsDefined(typeof(SBP_Enums.MessageTypes), (int)_message.MessageType))
-                                    messageTypeEnum = (SBP_Enums.MessageTypes)(int)_message.MessageType;
-
-                                if(MESSAGE_STRUCTS.ContainsKey(messageTypeEnum))
-                                {
-                                    object messageData = Activator.CreateInstance(MESSAGE_STRUCTS[messageTypeEnum], _message.Payload.ToArray());
-                                        _messageQueue.Enqueue(new SBPMessageEventArgs((int)_message.SenderID.Value, messageTypeEnum, messageData));
-                                }
-                            }
-                            else
-                            {
-                                lock (_syncobject)
-                                    _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("CRC not valid")));
-                            }
-
-                            _message = new SBPReceiveMessage();
-                            _preambleFound = false;
-                        }
+                        _preambleFound = true;
+                        _receivedBytes.RemoveAt(0);
+                        break;
                     }
                     else
-                        if (_receivedBytes.Dequeue() == PREAMBLE)
-                            _preambleFound = true;
-
+                        _receivedBytes.RemoveAt(0);
                 }
-            }        
+            }
+
+            if (_preambleFound)
+            {
+                if (!_message.MessageType.HasValue && _receivedBytes.Count > 1)
+                {
+                    _message.MessageType = BitConverter.ToUInt16(_receivedBytes.GetRange(0, 2).ToArray(), 0);
+                    _receivedBytes.RemoveRange(0, 2);
+                }
+
+                if (!_message.SenderID.HasValue && _message.MessageType.HasValue && _receivedBytes.Count > 1)
+                {
+                    _message.SenderID = BitConverter.ToUInt16(_receivedBytes.GetRange(0, 2).ToArray(), 0);
+                    _receivedBytes.RemoveRange(0, 2);
+                }
+
+                if (!_message.Length.HasValue && _message.SenderID.HasValue && _receivedBytes.Count > 0)
+                {
+                    _message.Length = _receivedBytes[0];
+                    _receivedBytes.RemoveAt(0);
+                }
+
+                if (_message.Length.HasValue)
+                {
+                    if (_receivedBytes.Count > _message.Length.Value + 2)
+                    {
+                        _message.Payload.AddRange(_receivedBytes.GetRange(0, _message.Length.Value));
+                        _receivedBytes.RemoveRange(0, _message.Length.Value);
+                        _message.ReceicevedChecksum = BitConverter.ToUInt16(_receivedBytes.GetRange(0, 2).ToArray(), 0);
+                        _receivedBytes.RemoveRange(0, 2);
+                        if (_message.ValidateCheckSum())
+                        {
+                            SBP_Enums.MessageTypes messageTypeEnum = SBP_Enums.MessageTypes.Unknown;
+                            if (Enum.IsDefined(typeof(SBP_Enums.MessageTypes), (int)_message.MessageType))
+                                messageTypeEnum = (SBP_Enums.MessageTypes)(int)_message.MessageType;
+
+                            if (MESSAGE_STRUCTS.ContainsKey(messageTypeEnum))
+                            {
+                                object messageData = Activator.CreateInstance(MESSAGE_STRUCTS[messageTypeEnum], _message.Payload.ToArray());                                
+                                lock (_syncobject)
+                                    _messageQueue.Enqueue(new SBPMessageEventArgs((int)_message.SenderID.Value, messageTypeEnum, messageData));
+                            }
+                        }
+                        else
+                        {
+                            lock (_syncobject)
+                                _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("CRC not valid")));
+                        }
+
+
+                        _message = new SBPReceiveMessage();
+                        _preambleFound = false;
+                    }
+                }
+            }
+            
         }
 
         protected override bool InvokeThreadExecute()
         {
             SBPMessageEventArgs sendMessage = null;
-            lock (_syncobject)
-                if (_messageQueue.Count > 0)
+            if (_messageQueue.Count > 0)
+                lock (_syncobject)
                     sendMessage = _messageQueue.Dequeue();
 
             if (sendMessage != null)

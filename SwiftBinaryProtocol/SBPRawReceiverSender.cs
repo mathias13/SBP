@@ -47,19 +47,43 @@ namespace SwiftBinaryProtocol
                 _messageBytes.Clear();
             }
 
-            //We need at least two bytes every time to interpret fields without problem
-            while (_receivedBytes.Count > 0)
+            if (!_preambleFound)
             {
-                if (_preambleFound)
+                while (_receivedBytes.Count > 0)
                 {
-                    if (_messageBytes.Count == 0)
-                        _messageBytes.Add(PREAMBLE);
-                    else if(_messageBytes.Count < 6)
-                        _messageBytes.Add(_receivedBytes.Dequeue());
-                    else if(_messageBytes.Count < ((int)_messageBytes[5] + 8))
-                        _messageBytes.Add(_receivedBytes.Dequeue());
-                    else
+                    if (_receivedBytes[0] == PREAMBLE)
                     {
+                        _preambleFound = true;
+                        _receivedBytes.RemoveAt(0);
+                        break;
+                    }
+                    else
+                        _receivedBytes.RemoveAt(0);
+                }
+            }
+
+            if (_preambleFound)
+            {
+                if (_messageBytes.Count == 0)
+                    _messageBytes.Add(PREAMBLE);
+
+                if (_messageBytes.Count < 6 && _receivedBytes.Count >= 5)
+                {
+                    _messageBytes.AddRange(_receivedBytes.GetRange(0, 5));
+                    _messageBytes.RemoveRange(0, 5);
+                }
+
+                int messageLength = -1;
+                if (_messageBytes.Count >= 6)
+                    messageLength = (int)_messageBytes[5];
+
+                if (messageLength > 0)
+                {
+                    if (_receivedBytes.Count > messageLength + 2)
+                    {
+                        _messageBytes.AddRange(_receivedBytes.GetRange(0, messageLength + 2));
+                        _receivedBytes.RemoveRange(0, messageLength + 2);
+
                         List<byte> crcBytes = new List<byte>();
                         for (int i = 1; i < _messageBytes.Count - 2; i++)
                             crcBytes.Add(_messageBytes[i]);
@@ -68,7 +92,7 @@ namespace SwiftBinaryProtocol
                         byte[] crcSumBytes = new byte[2] { _messageBytes[_messageBytes.Count - 2], _messageBytes[_messageBytes.Count - 1] };
                         ushort crcInMessage = BitConverter.ToUInt16(crcSumBytes, 0);
                         if (crc == crcInMessage)
-                            lock(_syncobject)
+                            lock (_syncobject)
                                 _messageQueue.Enqueue(_messageBytes.ToArray());
                         else
                         {
@@ -79,27 +103,23 @@ namespace SwiftBinaryProtocol
                         _preambleFound = false;
                     }
                 }
-                else
-                    if (_receivedBytes.Dequeue() == PREAMBLE)
-                        _preambleFound = true;
             }
         }
 
         protected override bool InvokeThreadExecute()
         {
             SBPRawMessageEventArgs sendMessage = null;
-            lock (_syncobject)
+            if (_messageQueue.Count > 0)
             {
-                if (_messageQueue.Count > 0)
-                {
-                    byte[] message = _messageQueue.Dequeue();
-                    int messageType = BitConverter.ToUInt16(new byte[]{message[1], message[2]},0);
-                    SBP_Enums.MessageTypes messageTypeEnum = SBP_Enums.MessageTypes.Unknown;
-                    if (Enum.IsDefined(typeof(SBP_Enums.MessageTypes), (int)messageType))
-                        messageTypeEnum = (SBP_Enums.MessageTypes)(int)messageType;
+                byte[] message = new byte[0];
+                lock(_syncobject)
+                    message = _messageQueue.Dequeue();
+                int messageType = BitConverter.ToUInt16(new byte[]{message[1], message[2]},0);
+                SBP_Enums.MessageTypes messageTypeEnum = SBP_Enums.MessageTypes.Unknown;
+                if (Enum.IsDefined(typeof(SBP_Enums.MessageTypes), (int)messageType))
+                    messageTypeEnum = (SBP_Enums.MessageTypes)(int)messageType;
 
-                    sendMessage = new SBPRawMessageEventArgs(messageTypeEnum, message);
-                }
+                sendMessage = new SBPRawMessageEventArgs(messageTypeEnum, message);
             }
 
             if (sendMessage != null)
