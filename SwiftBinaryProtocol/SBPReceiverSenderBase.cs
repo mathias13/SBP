@@ -9,6 +9,8 @@ using System.Text;
 using System.Net;
 using System.Net.Sockets;
 using System.IO;
+using System.Diagnostics;
+using SwiftBinaryProtocol.MessageStructs;
 
 namespace SwiftBinaryProtocol
 {
@@ -74,13 +76,12 @@ namespace SwiftBinaryProtocol
             _baudRate = baudrate;
             _rtsCts = rtsCts;
 
-            _receiveSendThread = new Thread(new ThreadStart(ReceiveSendThreadSerial))
-            {
-                Priority = ThreadPriority.Highest
-            };
+            _receiveSendThread = new Thread(new ThreadStart(ReceiveSendThreadSerial));
+            _receiveSendThread.Priority = ThreadPriority.Highest;
             _receiveSendThread.Start();
 
             _invokeThread = new Thread(new ThreadStart(InvokeThread));
+            _invokeThread.Priority = ThreadPriority.Highest;
             _invokeThread.Start();
         }
 
@@ -90,9 +91,11 @@ namespace SwiftBinaryProtocol
             _tcpPort = tcpPort;
 
             _receiveSendThread = new Thread(new ThreadStart(ReceiveSendThreadTCP));
+            _receiveSendThread.Priority = ThreadPriority.Highest;
             _receiveSendThread.Start();
 
             _invokeThread = new Thread(new ThreadStart(InvokeThread));
+            _invokeThread.Priority = ThreadPriority.Highest;
             _invokeThread.Start();
         }
 
@@ -112,8 +115,10 @@ namespace SwiftBinaryProtocol
             _receivedBytes.Clear();
             Task<int> sendTask = null;
             Task<int> readTask = null;
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
 
-            while(!_receiveSendThreadStopped)
+            while (!_receiveSendThreadStopped)
             {
                 try
                 {
@@ -165,6 +170,7 @@ namespace SwiftBinaryProtocol
                             else
                                 return (int)bytesRead;
                         });
+                        stopwatch.Restart();
                         readTask.Start();
                     }
 
@@ -232,6 +238,10 @@ namespace SwiftBinaryProtocol
 
                     if (readTask.IsCompleted)
                     {
+                        if(stopwatch.ElapsedMilliseconds > 50)
+                            lock (_syncobject)
+                                _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("Readtask takes more than 100ms: bytes read" + readTask.Result.ToString())));
+
                         if (readTask.Result < 0)
                             throw new Exception(String.Format("Failed to read port {0}", _comPort));
                         else
@@ -346,6 +356,8 @@ namespace SwiftBinaryProtocol
         {
             SBPSendExceptionEventArgs sendException = null;
             SBPReadExceptionEventArgs readException = null;
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
             while (!_invokeThreadStop)
             {
                 if (_sendExceptionQueue.Count > 0)
@@ -361,14 +373,19 @@ namespace SwiftBinaryProtocol
                     OnSendException(sendException);
                     sendException = null;
                 }
-                else if (readException != null)
+                if (readException != null)
                 {
                     OnReadException(readException);
                     readException = null;
                 }
-                else if (!InvokeThreadExecute())
+                if (!InvokeThreadExecute() && readException == null && sendException == null)
                     Thread.Sleep(1);
 
+                if (stopwatch.ElapsedMilliseconds > 100)
+                    lock (_syncobject)
+                        _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("InvokeThread takes more than 100ms")));
+
+                stopwatch.Restart();
             }
         }
 
