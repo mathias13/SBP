@@ -105,18 +105,34 @@ namespace SwiftBinaryProtocol
 
         private void ReceiveSendThreadSerial()
         {
-            byte[] buffer = new byte[32];
-            bool restart = false;
-            bool rtsActive = false;
-            byte[] sendMessageBytes = new byte[0];
-            DateTime sendTimeout = DateTime.MinValue;
-            IntPtr portHandle = IntPtr.Zero;
+            var buffer = new byte[32];
+            var restart = false;
+            var sendMessageBytes = new byte[0];
+            int sentBytes = 0;
+            var sendTimeout = new Stopwatch();
+            var portHandle = IntPtr.Zero;
             Thread.Sleep(1000);
             _receivedBytes.Clear();
-            Task<int> sendTask = null;
-            Task<int> readTask = null;
+            var resetEvent = new AutoResetEvent(false);
+            var overlapped = new OVERLAPPED();
+            var ptrOverlapped = Marshal.AllocHGlobal(Marshal.SizeOf(overlapped));
+            overlapped.Offset = 0; 
+            overlapped.OffsetHigh = 0;
+            overlapped.hEvent = resetEvent.SafeWaitHandle.DangerousGetHandle();
+            Marshal.StructureToPtr(overlapped, ptrOverlapped, true);
+            bool waitingRead = false;
+            var writeResetEvent = new AutoResetEvent(false);
+            var writeOverlapped = new OVERLAPPED();
+            var ptrWriteOverlapped = Marshal.AllocHGlobal(Marshal.SizeOf(writeOverlapped));
+            writeOverlapped.Offset = 0;
+            writeOverlapped.OffsetHigh = 0;
+            writeOverlapped.hEvent = writeResetEvent.SafeWaitHandle.DangerousGetHandle(); ;
+            Marshal.StructureToPtr(writeOverlapped, ptrWriteOverlapped, true);
+            bool waitingWrite = false;
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
+
+            Stopwatch stopwatchRead = new Stopwatch();
 
             while (!_receiveSendThreadStopped)
             {
@@ -129,7 +145,7 @@ namespace SwiftBinaryProtocol
                         if (portnumber > 9)
                             comPort = String.Format("\\\\.\\{0}", _comPort);
                         portHandle = Win32Com.CreateFile(comPort, Win32Com.GENERIC_READ | Win32Com.GENERIC_WRITE, 0, IntPtr.Zero,
-                            Win32Com.OPEN_EXISTING, 0, IntPtr.Zero);
+                            Win32Com.OPEN_EXISTING, Win32Com.FILE_FLAG_OVERLAPPED, IntPtr.Zero);
 
                         if (portHandle == (IntPtr)Win32Com.INVALID_HANDLE_VALUE)
                         {
@@ -141,7 +157,7 @@ namespace SwiftBinaryProtocol
 
                         COMMTIMEOUTS commTimeouts = new COMMTIMEOUTS
                         {
-                            ReadIntervalTimeout = uint.MaxValue,
+                            ReadIntervalTimeout = 1,
                             ReadTotalTimeoutConstant = 0,
                             ReadTotalTimeoutMultiplier = 0,
                             WriteTotalTimeoutConstant = 0,
@@ -162,37 +178,56 @@ namespace SwiftBinaryProtocol
                         if(_rtsCts)
                             if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.CLRRTS))
                                 throw new Exception(String.Format("Failed to reset RTS pin{0}", _comPort));
-
-                        readTask = new Task<int>(() =>
-                        {
-                            if (!Win32Com.ReadFile(portHandle, buffer, (uint)buffer.Length, out uint bytesRead, IntPtr.Zero))
-                                return -1;
-                            else
-                                return (int)bytesRead;
-                        });
-                        stopwatch.Restart();
-                        readTask.Start();
+                        Thread.Sleep(1000);
                     }
 
                     if (!Win32Com.GetHandleInformation(portHandle, out uint lpdwFlags))
                         throw new Exception(String.Format("Port {0} went offline", _comPort));
 
+                    if (!waitingRead)
+                    {
+                        waitingRead = true;
+                        if (!Win32Com.ReadFile(portHandle, buffer, 1, out uint readBytes, ptrOverlapped))
+                        {
+                            if(Marshal.GetLastWin32Error() != Win32Com.ERROR_IO_PENDING)
+                                throw new Exception(String.Format("Failed to read port {0}", _comPort));
+                        }
+                        stopwatchRead.Restart();
+                    }
+                    else
+                    {
+                        if (stopwatchRead.ElapsedMilliseconds > 10)
+                            lock (_syncobject)
+                                _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("ReadFile takes more than 10m")));
+
+                        if (resetEvent.WaitOne(1))
+                        {
+                            waitingRead = false;
+                            if(!Win32Com.GetOverlappedResult(portHandle, ptrOverlapped, out uint readBytes, false))
+                                throw new Exception(String.Format("Failed to read port {0}", _comPort));
+
+                            lock (_syncobject)
+                                _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("Read bytes: " + readBytes.ToString())));
+
+                            for (int i = 0; i < readBytes; i++)
+                                _receivedBytes.Add(buffer[0]);
+                        }
+                    }
+
                     if (_sendMessageQueue.Count > 0 && sendMessageBytes.Length == 0)
+                    {
                         lock (_syncobject)
                             sendMessageBytes = _sendMessageQueue.Dequeue();
+                        sentBytes = 0;
+                    }
 
                     if(sendMessageBytes.Length > 0)
                     {
-                        if (!rtsActive)
-                        {
-                            if(_rtsCts)
-                                if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.SETRTS))
-                                    lock (_syncobject)
-                                        _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to set RTS pin{0}", _comPort))));
+                        if(_rtsCts)
+                            if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.SETRTS))
+                                lock (_syncobject)
+                                    _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to set RTS pin{0}", _comPort))));
 
-                            sendTimeout = DateTime.Now.Add(TimeSpan.FromMilliseconds(SEND_TIMEOUT_SERIAL_MS));
-                            rtsActive = true;
-                        }
                         uint lpmodemstat = 0;
                         if(_rtsCts)
                             if (!Win32Com.GetCommModemStatus(portHandle, out lpmodemstat))
@@ -200,69 +235,47 @@ namespace SwiftBinaryProtocol
 
                         if ((lpmodemstat & Win32Com.MS_CTS_ON) > 0 || !_rtsCts)
                         {
-                            if (sendTask == null)
+                            if (!waitingWrite)
                             {
-                                sendTask = new Task<int>(() => {
-                                    if (!Win32Com.WriteFile(portHandle, sendMessageBytes, (uint)sendMessageBytes.Length, out uint bytesWritten, IntPtr.Zero))
-                                        return -1;
-                                    else
-                                        return (int)bytesWritten;
-                                });
-                                sendTask.Start();
+                                waitingWrite = true;
+                                sendTimeout.Restart();
+                                if (!Win32Com.WriteFile(portHandle, sendMessageBytes, (uint)sendMessageBytes.Length, out uint sent, ptrWriteOverlapped))
+                                    if (Marshal.GetLastWin32Error() != Win32Com.ERROR_IO_PENDING)
+                                        _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
                             }
-                        
-                            if(sendTask.IsCompleted)
+                            else
                             {
-                                if(sendTask.Result < 0)
-                                    lock (_syncobject)
+                                if (writeResetEvent.WaitOne(0))
+                                {
+                                    if (!Win32Com.GetOverlappedResult(portHandle, ptrWriteOverlapped, out uint sent, false))
                                         _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write to port {0}", _comPort))));
 
-                                if (sendTask.Result == sendMessageBytes.Length || DateTime.Now > sendTimeout)
-                                {
-                                    if (_rtsCts)
-                                        if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.CLRRTS))
-                                            lock (_syncobject)
-                                                _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to reset RTS pin{0}", _comPort))));
-                                    rtsActive = false;
-                                    sendTask = null;
-                                    sendMessageBytes = new byte[0];
+                                    sentBytes += (int)sent;
                                 }
                             }
-                            
-                            if (DateTime.Now > sendTimeout)
-                                lock (_syncobject)
-                                    _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write all bytes to port {0}", _comPort))));
 
+                            if (sentBytes == sendMessageBytes.Length || sendTimeout.ElapsedMilliseconds > 100)
+                            {
+                                if (sendTimeout.ElapsedMilliseconds > 100)
+                                    lock (_syncobject)
+                                        _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to write all bytes to port {0}", _comPort))));
+
+                                if (_rtsCts)
+                                    if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.CLRRTS))
+                                        lock (_syncobject)
+                                            _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to reset RTS pin{0}", _comPort))));
+
+                                sendMessageBytes = new byte[0];
+                            }
                         }
-                    }
-
-                    if (readTask.IsCompleted)
-                    {
-                        if(stopwatch.ElapsedMilliseconds > 50)
-                            lock (_syncobject)
-                                _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("Readtask takes more than 100ms: bytes read" + readTask.Result.ToString())));
-
-                        if (readTask.Result < 0)
-                            throw new Exception(String.Format("Failed to read port {0}", _comPort));
-                        else
-                        {
-                            if (readTask.Result > 0)
-                                for (int i = 0; i < readTask.Result; i++)
-                                    _receivedBytes.Add(buffer[i]);
-                            else
-                                Thread.Sleep(1);
-                        }
-                        readTask = new Task<int>(() =>
-                        {
-                            if (!Win32Com.ReadFile(portHandle, buffer, (uint)buffer.Length, out uint bytesRead, IntPtr.Zero))
-                                return -1;
-                            else
-                                return (int)bytesRead;
-                        });
-                        readTask.Start();
                     }
 
                     ProcessReading(restart);
+
+                    if (stopwatch.ElapsedMilliseconds > 10)
+                        lock (_syncobject)
+                            _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("ReceiveSendThread takes more than 10ms")));
+                    stopwatch.Restart();
 
                     restart = false;
                 }
@@ -279,16 +292,11 @@ namespace SwiftBinaryProtocol
                     Thread.Sleep(5000);
                 }
             }
-            if (sendTask != null)
-                if (!sendTask.IsCompleted)
-                    sendTask.Wait();
-
-            if (readTask != null)
-                if (!readTask.IsCompleted)
-                    readTask.Wait();
 
             Win32Com.CancelIo(portHandle);
             Win32Com.CloseHandle(portHandle);
+            Marshal.FreeHGlobal(ptrOverlapped);
+            Marshal.FreeHGlobal(ptrWriteOverlapped);
         }
         
         private void ReceiveSendThreadTCP()
@@ -381,9 +389,9 @@ namespace SwiftBinaryProtocol
                 if (!InvokeThreadExecute() && readException == null && sendException == null)
                     Thread.Sleep(1);
 
-                if (stopwatch.ElapsedMilliseconds > 100)
+                if (stopwatch.ElapsedMilliseconds > 50)
                     lock (_syncobject)
-                        _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("InvokeThread takes more than 100ms")));
+                        _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("InvokeThread takes more than 50ms")));
 
                 stopwatch.Restart();
             }

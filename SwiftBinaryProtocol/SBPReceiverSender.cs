@@ -232,7 +232,7 @@ namespace SwiftBinaryProtocol
                                 object messageData = Activator.CreateInstance(MESSAGE_STRUCTS[messageTypeEnum], _message.Payload.ToArray());   
                                 if(stopwatch.ElapsedMilliseconds > 100)
                                     lock (_syncobject)
-                                        _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("Readingthread takes more than 100ms")));
+                                        _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("Readingthread takes more than 200ms")));
                                 stopwatch.Restart();
 
                                 lock (_syncobject)
