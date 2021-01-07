@@ -103,8 +103,6 @@ namespace SwiftBinaryProtocol
 
         private SBPReceiveMessage _message = new SBPReceiveMessage();
         
-        private Stopwatch stopwatch = new Stopwatch();
-
         private readonly IDictionary<SBP_Enums.MessageTypes, Type> MESSAGE_STRUCTS = new Dictionary<SBP_Enums.MessageTypes, Type>()
         {
             { SBP_Enums.MessageTypes.BASELINE_ECEF, typeof(BaselineECEF)},
@@ -158,12 +156,10 @@ namespace SwiftBinaryProtocol
 
         public SBPReceiverSender(string comPort, int baudrate, bool rtsCts) : base(comPort, baudrate, rtsCts)
         {
-            stopwatch.Start();
         }
 
         public SBPReceiverSender(IPAddress ipAdress, int tcpPort) : base(ipAdress, tcpPort)
         {
-            stopwatch.Start();
         }
 
         #endregion
@@ -230,11 +226,6 @@ namespace SwiftBinaryProtocol
                             if (MESSAGE_STRUCTS.ContainsKey(messageTypeEnum))
                             {
                                 object messageData = Activator.CreateInstance(MESSAGE_STRUCTS[messageTypeEnum], _message.Payload.ToArray());   
-                                if(stopwatch.ElapsedMilliseconds > 100)
-                                    lock (_syncobject)
-                                        _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("Readingthread takes more than 200ms")));
-                                stopwatch.Restart();
-
                                 lock (_syncobject)
                                     _messageQueue.Enqueue(new SBPMessageEventArgs((int)_message.SenderID.Value, messageTypeEnum, messageData));
                             }
@@ -260,10 +251,6 @@ namespace SwiftBinaryProtocol
             if (_messageQueue.Count > 0)
                 lock (_syncobject)
                     sendMessage = _messageQueue.Dequeue();
-
-            if (_messageQueue.Count > 10)
-                lock (_syncobject)
-                    _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("Message buffer is greater than 10")));
 
             if (sendMessage != null)
             {

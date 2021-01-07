@@ -105,7 +105,7 @@ namespace SwiftBinaryProtocol
 
         private void ReceiveSendThreadSerial()
         {
-            var buffer = new byte[32];
+            var buffer = new byte[64];
             var restart = false;
             var sendMessageBytes = new byte[0];
             int sentBytes = 0;
@@ -129,10 +129,6 @@ namespace SwiftBinaryProtocol
             writeOverlapped.hEvent = writeResetEvent.SafeWaitHandle.DangerousGetHandle(); ;
             Marshal.StructureToPtr(writeOverlapped, ptrWriteOverlapped, true);
             bool waitingWrite = false;
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            Stopwatch stopwatchRead = new Stopwatch();
 
             while (!_receiveSendThreadStopped)
             {
@@ -157,7 +153,7 @@ namespace SwiftBinaryProtocol
 
                         COMMTIMEOUTS commTimeouts = new COMMTIMEOUTS
                         {
-                            ReadIntervalTimeout = 1,
+                            ReadIntervalTimeout = 5,
                             ReadTotalTimeoutConstant = 0,
                             ReadTotalTimeoutMultiplier = 0,
                             WriteTotalTimeoutConstant = 0,
@@ -187,30 +183,20 @@ namespace SwiftBinaryProtocol
                     if (!waitingRead)
                     {
                         waitingRead = true;
-                        if (!Win32Com.ReadFile(portHandle, buffer, 1, out uint readBytes, ptrOverlapped))
-                        {
-                            if(Marshal.GetLastWin32Error() != Win32Com.ERROR_IO_PENDING)
+                        if (!Win32Com.ReadFile(portHandle, buffer, (uint)buffer.Length, out uint readBytes, ptrOverlapped))
+                            if (Marshal.GetLastWin32Error() != Win32Com.ERROR_IO_PENDING)
                                 throw new Exception(String.Format("Failed to read port {0}", _comPort));
-                        }
-                        stopwatchRead.Restart();
                     }
                     else
                     {
-                        if (stopwatchRead.ElapsedMilliseconds > 10)
-                            lock (_syncobject)
-                                _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("ReadFile takes more than 10m")));
-
-                        if (resetEvent.WaitOne(1))
+                        if (resetEvent.WaitOne(10))
                         {
                             waitingRead = false;
                             if(!Win32Com.GetOverlappedResult(portHandle, ptrOverlapped, out uint readBytes, false))
                                 throw new Exception(String.Format("Failed to read port {0}", _comPort));
 
-                            lock (_syncobject)
-                                _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("Read bytes: " + readBytes.ToString())));
-
                             for (int i = 0; i < readBytes; i++)
-                                _receivedBytes.Add(buffer[0]);
+                                _receivedBytes.Add(buffer[i]);
                         }
                     }
 
@@ -221,7 +207,7 @@ namespace SwiftBinaryProtocol
                         sentBytes = 0;
                     }
 
-                    if(sendMessageBytes.Length > 0)
+                    if (sendMessageBytes.Length > 0)
                     {
                         if(_rtsCts)
                             if (!Win32Com.EscapeCommFunction(portHandle, Win32Com.SETRTS))
@@ -266,17 +252,12 @@ namespace SwiftBinaryProtocol
                                             _sendExceptionQueue.Enqueue(new SBPSendExceptionEventArgs(new Exception(String.Format("Failed to reset RTS pin{0}", _comPort))));
 
                                 sendMessageBytes = new byte[0];
+                                waitingWrite = false;
                             }
                         }
                     }
 
                     ProcessReading(restart);
-
-                    if (stopwatch.ElapsedMilliseconds > 10)
-                        lock (_syncobject)
-                            _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("ReceiveSendThread takes more than 10ms")));
-                    stopwatch.Restart();
-
                     restart = false;
                 }
                 catch(Exception e)
@@ -364,8 +345,6 @@ namespace SwiftBinaryProtocol
         {
             SBPSendExceptionEventArgs sendException = null;
             SBPReadExceptionEventArgs readException = null;
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
             while (!_invokeThreadStop)
             {
                 if (_sendExceptionQueue.Count > 0)
@@ -388,12 +367,6 @@ namespace SwiftBinaryProtocol
                 }
                 if (!InvokeThreadExecute() && readException == null && sendException == null)
                     Thread.Sleep(1);
-
-                if (stopwatch.ElapsedMilliseconds > 50)
-                    lock (_syncobject)
-                        _readExceptionQueue.Enqueue(new SBPReadExceptionEventArgs(new Exception("InvokeThread takes more than 50ms")));
-
-                stopwatch.Restart();
             }
         }
 
