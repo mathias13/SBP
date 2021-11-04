@@ -240,7 +240,7 @@ namespace SwiftBinaryProtocol
                                 }
                             }
 
-                            if (sentBytes == sendMessageBytes.Length || sendTimeout.ElapsedMilliseconds > 100)
+                            if (sentBytes == sendMessageBytes.Length || sendTimeout.ElapsedMilliseconds > 200)
                             {
                                 if (sendTimeout.ElapsedMilliseconds > 100)
                                     lock (_syncobject)
