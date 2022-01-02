@@ -46,8 +46,8 @@ namespace SwiftBinaryProtocol.MessageStructs
             {
                 DateTime datum = new DateTime(1980, 1, 6, 0, 0, 0);
                 datum = datum.AddDays((double)_wn * 7);
-                datum = datum.AddMilliseconds((double)_tow);
-                datum = datum.AddMilliseconds((double)_ns / 1000);
+                datum = datum.AddMilliseconds(_tow);
+                datum = datum.AddMilliseconds(_ns);
                 return datum;
             }
         }

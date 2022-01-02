@@ -43,6 +43,8 @@ namespace SwiftBinaryProtocol
             VEL_NED = 0x020E,
             BASELINE_HEADING = 0x20F,
             LOG = 0x0401,
+            IMU_RAW = 0x0900,
+            MAG_RAW = 0x0902,
             STARTUP = 0xFF00,
             HEARTBEAT = 0xFFFF            
         }

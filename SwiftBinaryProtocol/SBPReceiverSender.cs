@@ -102,7 +102,7 @@ namespace SwiftBinaryProtocol
         private bool _preambleFound = false;
 
         private SBPReceiveMessage _message = new SBPReceiveMessage();
-        
+
         private readonly IDictionary<SBP_Enums.MessageTypes, Type> MESSAGE_STRUCTS = new Dictionary<SBP_Enums.MessageTypes, Type>()
         {
             { SBP_Enums.MessageTypes.BASELINE_ECEF, typeof(BaselineECEF)},
@@ -138,10 +138,12 @@ namespace SwiftBinaryProtocol
             {SBP_Enums.MessageTypes.ACQ_RESULT, typeof(AquisitionResult)},
             {SBP_Enums.MessageTypes.EXT_EVENT, typeof(ExternalEvent)},
             {SBP_Enums.MessageTypes.EPHEMERIS, typeof(Ephemeris)},
-            {SBP_Enums.MessageTypes.MASK_SATELLITE, typeof(MaskSattelite)},            
+            {SBP_Enums.MessageTypes.MASK_SATELLITE, typeof(MaskSattelite)},
             {SBP_Enums.MessageTypes.RESET, typeof(Reset)},
             {SBP_Enums.MessageTypes.TRACKING_STATE, typeof(TrackingState)},
-            {SBP_Enums.MessageTypes.LOG, typeof(Log)}
+            {SBP_Enums.MessageTypes.LOG, typeof(Log)},
+            {SBP_Enums.MessageTypes.IMU_RAW, typeof(IMU_Raw)},
+            {SBP_Enums.MessageTypes.MAG_RAW, typeof(MAG_Raw)}
         };
         
         #endregion

@@ -66,6 +66,8 @@
     <Compile Include="MessageStructs\Ephemeris_Dep.cs" />
     <Compile Include="MessageStructs\Ephemeris.cs" />
     <Compile Include="MessageStructs\ExternalEvent.cs" />
+    <Compile Include="MessageStructs\MAG_Raw.cs" />
+    <Compile Include="MessageStructs\IMU_Raw.cs" />
     <Compile Include="MessageStructs\UTCTime.cs" />
     <Compile Include="MessageStructs\GPSTime_Dep.cs" />
     <Compile Include="MessageStructs\MaskSattelite.cs" />
